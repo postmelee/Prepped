@@ -112,6 +112,12 @@ export default function Home() {
     setTab("create");
   }
 
+  function editSavedStore() {
+    setSelectedIds(savedIds);
+    setStep("category");
+    setTab("create");
+  }
+
   function toggleMenu(id: number) {
     setSelectedIds((current) =>
       current.includes(id) ? current.filter((menuId) => menuId !== id) : [...current, id],
@@ -152,7 +158,7 @@ export default function Home() {
             <section className="qr-info" aria-labelledby="qr-info-title">
               <div className="section-title-row">
                 <h2 id="qr-info-title">QR 정보</h2>
-                <button className="text-button" type="button" onClick={startCreate}>메뉴 바꾸기</button>
+                <button className="text-button" type="button" onClick={editSavedStore}>메뉴 바꾸기</button>
               </div>
               <div className={`store-toggle ${storeEnabled ? "enabled" : ""}`}>
                 <div className="brand-mark mcdonald-mark" aria-hidden="true">M</div>
@@ -225,7 +231,7 @@ export default function Home() {
                     <span>합계</span>
                     <strong>{formatPrice(savedTotal)}</strong>
                   </div>
-                  <button type="button" onClick={startCreate}>
+                  <button type="button" onClick={editSavedStore}>
                     {savedItems.length ? "메뉴 바꾸기" : "메뉴 담기"}
                   </button>
                 </div>

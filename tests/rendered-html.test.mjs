@@ -80,6 +80,9 @@ test("keeps the PWA and QR contracts explicit", async () => {
   assert.match(mobileSource, /QR 사용 중/);
   assert.match(mobileSource, /설정 없음/);
   assert.match(mobileSource, /aria-current=\{tab === "settings" \? "page" : undefined\}/);
+  assert.match(mobileSource, /function startCreate\(\)[\s\S]*?setStep\("store"\)/);
+  assert.match(mobileSource, /function editSavedStore\(\)[\s\S]*?setStep\("category"\)/);
+  assert.equal(mobileSource.match(/onClick=\{editSavedStore\}/g)?.length, 2);
   assert.match(kioskSource, /\(\[a-zA-Z0-9_-\]\+\)=\\\{\(\[\^}]\*\)\\\}/);
   assert.match(kioskSource, /navigator\.mediaDevices\.getUserMedia/);
   assert.match(kioskSource, /결제하기/);

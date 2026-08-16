@@ -128,11 +128,11 @@ export default function Home() {
 
   return (
     <main className="mobile-shell">
-      <section className="phone-app" aria-label="한끼패스 메뉴 QR 앱">
+      <section className="phone-app" aria-label="Prepped 메뉴 QR 앱">
         {tab === "qr" ? (
           <div className="screen qr-screen">
             <header className="screen-header">
-              <span className="eyebrow">한끼패스</span>
+              <span className="eyebrow">Prepped</span>
               <h1>내 메뉴 QR</h1>
             </header>
 

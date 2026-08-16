@@ -111,7 +111,7 @@ export default function KioskPage() {
 
       <div className={`kiosk-content ${state === "found" ? "result-mode" : ""}`}>
         <section className="kiosk-intro">
-          <span className="kiosk-step">한끼패스</span>
+          <span className="kiosk-step">Prepped</span>
           <h1>{state === "found" ? "메뉴를 확인해주세요" : "휴대폰 QR을\n보여주세요"}</h1>
           <p>{state === "found" ? "QR에 저장된 주문 정보입니다." : "자주 먹는 메뉴를 바로 불러옵니다."}</p>
         </section>

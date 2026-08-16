@@ -1,100 +1,61 @@
-# vinext-starter
+# Prepped
 
-A clean full-stack starter running on
-[vinext](https://github.com/cloudflare/vinext), with optional Cloudflare D1 and
-Drizzle support.
+시니어 사용자가 키오스크 앞에서 메뉴를 처음부터 찾지 않도록, 자주 먹는 메뉴 조합을 휴대폰에서 QR로 미리 준비하는 PWA입니다. 노트북용 키오스크 화면은 카메라로 QR을 읽고 현재 단계에서는 QR 원문과 메뉴 ID를 보여줍니다.
 
-## Prerequisites
+## 화면
 
-- Node.js `>=22.13.0`
+- `/` — 모바일 메뉴 QR PWA
+  - 내 QR 보기와 매장별 포함 여부 설정
+  - 매장 → 카테고리 → 메뉴의 3단계 선택
+  - 선택 목록 확인, 저장, QR 즉시 갱신
+- `/kiosk` — 노트북 키오스크 데모
+  - 카메라 QR 스캔
+  - QR 원문과 매장·메뉴 ID 표시
+  - 샘플 QR로 카메라 없이 흐름 확인
 
-## Quick Start
+## QR 계약
+
+한 매장은 `store={menuId,menuId}` 형식으로 직렬화하고 여러 매장은 세미콜론으로 구분합니다.
+
+```text
+mcdonald={101,201,301}
+mcdonald={101,201};subway={401,402}
+```
+
+백엔드 API가 확정되기 전까지 키오스크는 이 문자열을 파싱해 매장 키와 메뉴 ID를 표시합니다. 메뉴 조합과 QR 포함 여부는 브라우저 `localStorage`에만 저장되며 서버 또는 다른 기기로 동기화되지 않습니다.
+
+상세 계약과 후속 API 경계는 [기술 명세](docs/technical-specification.md)를 참고하세요.
+
+## 로컬 실행
+
+요구 사항: Node.js `>=22.13.0`
 
 ```bash
 npm install
 npm run dev
+```
+
+개발 서버가 안내하는 주소에서 `/`와 `/kiosk`를 엽니다. 노트북 카메라는 브라우저 권한과 보안 컨텍스트가 필요합니다.
+
+## 검증
+
+```bash
 npm run build
+npm test
+npm run lint
 ```
 
-This starter does not use `wrangler.jsonc`.
+## 기술 구성
 
-## Included Shape
+- React 19, TypeScript
+- vinext/Vite 기반 Next.js 호환 라우팅
+- `qrcode` — QR 생성
+- `jsqr` — 카메라 프레임 QR 인식
+- Web App Manifest, Service Worker, `localStorage`
+- OpenAI Sites 배포 설정: `.openai/hosting.json`
 
-- edit site code under `app/`
-- `.openai/hosting.json` declares optional Sites D1 and R2 bindings
-- `vite.config.ts` simulates declared bindings for local development
-- `db/schema.ts` starts intentionally empty
-- `examples/d1/` contains an optional D1 example surface
-- `drizzle.config.ts` supports local migration generation when needed
+## 현재 범위
 
-## Workspace Auth Headers
+맥도날드 mock 메뉴만 제공하며 백엔드, 사용자 계정, 서버 저장, 실제 결제는 포함하지 않습니다. `/kiosk`의 결제 버튼은 사용자 흐름을 보여주는 데모입니다.
 
-Signed-in visitors receive both `oai-authenticated-user-id` and `oai-authenticated-user-email`. Private Sites require every visitor to sign in; public Sites may also have anonymous visitors, for whom neither header is present.
-
-The user ID is stable for the same user on the same Site and different across Sites. Email and name are intended for display or contact purposes.
-
-SIWC-authenticated workspace sites may also receive
-`oai-authenticated-user-full-name` when the user's SIWC profile has a non-empty
-`name` claim. The full-name value is percent-encoded UTF-8 and is accompanied by
-`oai-authenticated-user-full-name-encoding: percent-encoded-utf-8`.
-
-Treat the full name as optional and fall back to email when it is absent:
-
-```tsx
-import { headers } from "next/headers";
-
-export default async function Home() {
-  const requestHeaders = await headers();
-  const userId = requestHeaders.get("oai-authenticated-user-id");
-  const email = requestHeaders.get("oai-authenticated-user-email");
-  const encodedFullName = requestHeaders.get("oai-authenticated-user-full-name");
-  const fullName =
-    encodedFullName &&
-    requestHeaders.get("oai-authenticated-user-full-name-encoding") ===
-      "percent-encoded-utf-8"
-      ? decodeURIComponent(encodedFullName)
-      : null;
-
-  const displayName = fullName ?? email;
-  // ...
-}
-```
-
-## Optional Dispatch-Owned ChatGPT Sign-In
-
-Import the ready-to-use helpers from `app/chatgpt-auth.ts` when the site needs
-optional or required ChatGPT sign-in:
-
-- Use `getChatGPTUser()` for optional signed-in UI.
-- Use `requireChatGPTUser(returnTo)` for server-rendered pages that should send
-  anonymous visitors through Sign in with ChatGPT.
-- Use `chatGPTSignInPath(returnTo)` and `chatGPTSignOutPath(returnTo)` for
-  browser links or actions.
-- Pass a same-origin relative `returnTo` path for the destination after sign-in
-  or sign-out. The helper validates and safely encodes it.
-- Mark protected pages with `export const dynamic = "force-dynamic"` because
-  they depend on per-request identity headers.
-
-Dispatch owns `/signin-with-chatgpt`, `/signout-with-chatgpt`, `/callback`, the
-OAuth cookies, and identity header injection. Do not implement app routes for
-those reserved paths. Routes that do not import and call the helper remain
-anonymous-compatible.
-
-SIWC establishes identity only; it does not prove workspace membership. Use the
-Sites hosting platform's access policy controls for workspace-wide restrictions,
-or enforce explicit server-side membership or allowlist checks.
-
-Use SIWC for account pages, user-specific dashboards, saved records, and write
-actions tied to the current ChatGPT user. Leave public content anonymous.
-
-## Useful Commands
-
-- `npm run dev`: start local development
-- `npm run build`: verify the vinext build output
-- `npm test`: build the starter and verify its rendered loading skeleton
-- `npm run db:generate`: generate Drizzle migrations after schema changes
-
-## Learn More
-
-- [vinext Documentation](https://github.com/cloudflare/vinext)
-- [Drizzle D1 Guide](https://orm.drizzle.team/docs/get-started/d1-new)
+프로젝트 운영은 [Hyper-Waterfall](https://github.com/postmelee/hyper-waterfall) v0.3.0 규칙을 따릅니다.

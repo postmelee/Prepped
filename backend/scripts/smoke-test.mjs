@@ -24,8 +24,32 @@ async function request(path, options = {}) {
   return { response, payload };
 }
 
+async function preflight(path, requestedHeaders = "content-type") {
+  const response = await fetch(`${apiBaseUrl}${path}`, {
+    method: "OPTIONS",
+    headers: {
+      origin,
+      "access-control-request-method": "POST",
+      "access-control-request-headers": requestedHeaders,
+    },
+  });
+  if (!response.ok) throw new Error(`OPTIONS ${path} 실패: HTTP ${response.status}`);
+  if (response.headers.get("access-control-allow-origin") !== origin) {
+    throw new Error(`${path} preflight 응답의 CORS Origin이 일치하지 않습니다.`);
+  }
+  const allowedMethods = response.headers.get("access-control-allow-methods")?.toLowerCase() ?? "";
+  if (!allowedMethods.includes("post")) throw new Error(`${path} preflight에 POST가 허용되지 않았습니다.`);
+  const allowedHeaders = response.headers.get("access-control-allow-headers")?.toLowerCase() ?? "";
+  for (const header of requestedHeaders.split(",").map((value) => value.trim()).filter(Boolean)) {
+    if (!allowedHeaders.includes(header)) throw new Error(`${path} preflight에 ${header} 헤더가 허용되지 않았습니다.`);
+  }
+}
+
 const health = await request("/v1/health");
 if (health.payload?.data?.status !== "ok") throw new Error("health 응답이 올바르지 않습니다.");
+
+await preflight("/v1/drafts");
+await preflight("/v1/drafts/example-token/complete", "content-type,idempotency-key");
 
 const created = await request("/v1/drafts", {
   method: "POST",
@@ -62,4 +86,4 @@ if (replay.payload?.data?.idempotentReplay !== true) throw new Error("완료 요
 const reusable = await request(`/v1/drafts/${encodeURIComponent(token)}`);
 if (reusable.payload?.data?.draft?.token !== token) throw new Error("완료 뒤 초안이 재사용되지 않습니다.");
 
-console.log("스모크 테스트 통과: health, 생성, 복원, 완료, 멱등 재시도, QR 재사용");
+console.log("스모크 테스트 통과: health, CORS preflight, 생성, 복원, 완료, 멱등 재시도, QR 재사용");

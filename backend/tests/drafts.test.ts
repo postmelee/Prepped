@@ -1,7 +1,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { DomainError, DraftService, InMemoryDraftRepository } from "../src/domain/drafts.ts";
+import {
+  DomainError,
+  DraftService,
+  InMemoryDraftRepository,
+  type CompletedOrder,
+  type DraftRepository,
+  type DraftSnapshot,
+} from "../src/domain/drafts.ts";
 
 function createService() {
   return new DraftService({
@@ -57,6 +64,56 @@ test("replays one completion request but creates a new order for a new key", asy
   assert.equal(replay.order.id, first.order.id);
   assert.notEqual(anotherUse.order.id, first.order.id);
   assert.equal((await service.getDraft(draft.token)).token, draft.token);
+});
+
+test("returns the persisted result when a concurrent completion wins the same idempotency key", async () => {
+  class ConcurrentCompletionRepository implements DraftRepository {
+    private draft?: DraftSnapshot;
+    private completion?: CompletedOrder;
+
+    async saveDraft(savedDraft: DraftSnapshot): Promise<void> {
+      this.draft = structuredClone(savedDraft);
+    }
+
+    async findDraft(token: string): Promise<DraftSnapshot | undefined> {
+      return this.draft?.token === token ? structuredClone(this.draft) : undefined;
+    }
+
+    async findCompletion(_token: string, _idempotencyKey: string): Promise<CompletedOrder | undefined> {
+      return this.completion ? structuredClone(this.completion) : undefined;
+    }
+
+    async saveCompletion(
+      _token: string,
+      _idempotencyKey: string,
+      order: CompletedOrder,
+      _expiresAt: string,
+    ): Promise<void> {
+      this.completion = {
+        ...structuredClone(order),
+        id: "ord_winner",
+        confirmedAt: "2026-08-16T05:00:01Z",
+      };
+      throw new Error("conditional completion write lost the idempotency race");
+    }
+  }
+
+  const service = new DraftService({
+    repository: new ConcurrentCompletionRepository(),
+    tokenFactory: () => "draft-token-abcdefghijklmnopqrstuvwxyz0123456789",
+    orderIdFactory: () => "ord_concurrent",
+    clock: () => new Date("2026-08-16T05:00:00Z"),
+  });
+  const { draft } = await service.createDraft({
+    storeId: "mcdonald",
+    items: [{ menuId: "101", quantity: 1, optionIds: [] }],
+  });
+
+  const result = await service.completeDraft(draft.token, "b3e1f23a-c83f-4f0f-bbe5-8db3175431a1");
+
+  assert.equal(result.idempotentReplay, true);
+  assert.equal(result.order.id, "ord_winner");
+  assert.notEqual(result.order.id, "ord_concurrent");
 });
 
 test("rejects a menu that does not belong to the server catalog", async () => {

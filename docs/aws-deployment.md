@@ -97,7 +97,7 @@ AWS는 GitHub OIDC 역할에 `token.actions.githubusercontent.com:sub` 조건을
 
 ### 계정 부트스트랩 템플릿
 
-[`backend/infra/github-oidc-bootstrap.yaml`](../backend/infra/github-oidc-bootstrap.yaml)은 GitHub OIDC Provider, `PreppedGitHubDeployProduction` 역할, `PreppedCloudFormationExecution` 역할을 별도 CloudFormation 스택으로 만듭니다. GitHub 역할은 `production` Environment subject 두 가지 형식만 허용하고, CloudFormation 실행 역할은 `prepped-*-order-api` Lambda·주문 테이블과 `prepped-*-catalog` 카탈로그 테이블, 로그 그룹·HTTP API 및 지정한 아티팩트 버킷으로 권한을 제한합니다. 배포 역할에는 카탈로그 데이터 쓰기 권한을 주지 않습니다.
+[`backend/infra/github-oidc-bootstrap.yaml`](../backend/infra/github-oidc-bootstrap.yaml)은 GitHub OIDC Provider, `PreppedGitHubDeployProduction` 역할, `PreppedCloudFormationExecution` 역할을 별도 CloudFormation 스택으로 만듭니다. GitHub 역할은 `production` Environment subject 두 가지 형식과 `prepped-prod-order-api` 스택, 지정한 CloudFormation 실행 역할로 제한합니다. CloudFormation 실행 역할은 `prepped-*-order-api` Lambda·주문 테이블과 `prepped-*-catalog` 카탈로그 테이블, 로그 그룹·HTTP API 및 지정한 아티팩트 버킷으로 권한을 제한합니다. 배포 역할에는 카탈로그 데이터 쓰기 권한을 주지 않습니다.
 
 계정 부트스트랩 관리자는 IAM Identity Center 임시 자격 증명으로 아래 명령을 실행합니다. 현재 해커톤 계정의 버킷명은 `prepped-prod-sam-artifacts-845081398362`입니다.
 
@@ -204,7 +204,8 @@ curl -X POST "$API_BASE_URL/v1/catalog/resolve" \
 5. 배포 후 `GET /v1/health`, 초안 생성·조회·완료, 멱등 재시도, QR 재사용, CORS를 자동 스모크 테스트합니다. 토큰이나 주문 내용은 로그에 출력하지 않습니다.
 6. 카탈로그 버전을 변경한 배포는 프로덕션 운영자가 `CatalogTableName` 출력과 dry-run을 확인하고 위와 같은 명시적 `--apply` 시드를 실행합니다. 이 단계는 자동 배포 역할에 데이터 쓰기 권한을 주지 않기 위해 자동화하지 않습니다.
 7. 세 매장·대표 메뉴·부분 성공 resolve를 확인한 뒤 Sites Worker의 `PREPPED_API_BASE_URL`이 현재 `ApiBaseUrl`을 가리키는지 검증합니다.
-8. CloudWatch 오류·지연과 AWS Budgets 알림을 확인합니다.
+8. HTTP API Stage는 10 RPS·burst 20 목표치로 throttling을 설정합니다.
+9. CloudWatch 오류·지연과 AWS Budgets 알림을 확인합니다.
 
 SAM으로 GitHub Actions 배포를 구성하는 기본 흐름은 [AWS SAM GitHub Actions 배포 문서](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/deploying-using-github.html)를 참조합니다. 이 프로젝트는 장기 액세스 키 예시 대신 앞 절의 OIDC 자격 증명을 사용합니다.
 
@@ -237,7 +238,7 @@ SAM으로 GitHub Actions 배포를 구성하는 기본 흐름은 [AWS SAM GitHub
 - [ ] IAM Identity Center 관리자·개발자 개인 계정과 MFA 설정
 - [ ] 개발·프로덕션 역할이 최소 권한이고 `PassRole` 범위가 제한됨
 - [x] GitHub OIDC Provider와 `postmelee/Prepped`의 `main` 조건 설정
-- [x] GitHub `production` Environment가 `main`만 허용
+- [ ] GitHub `production` Environment 배포 브랜치 정책을 `main`으로 제한
 - [x] `production` Environment 변수 9개와 전용 SAM 아티팩트 버킷 설정
 - [x] OIDC 배포 역할과 CloudFormation 실행 역할을 분리하고 `iam:PassRole` 범위를 실행 역할 하나로 제한
 - [x] CORS Origin이 실제 ChatGPT Sites URL로 제한됨

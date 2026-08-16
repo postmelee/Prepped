@@ -43,6 +43,9 @@ Resources:
         AllowOrigins: !Ref AllowedOrigins
         AllowHeaders: [content-type, idempotency-key]
         AllowMethods: [GET, POST, OPTIONS]
+      DefaultRouteSettings:
+        ThrottlingBurstLimit: 20
+        ThrottlingRateLimit: 10
 
   OrderTable:
     Type: AWS::DynamoDB::Table

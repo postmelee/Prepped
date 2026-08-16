@@ -34,11 +34,11 @@
 | 404 | `MENU_NOT_FOUND` | 단건 메뉴 ID가 없음 | 목록을 다시 조회하고 저장 설정 확인 |
 | 404 | `DRAFT_NOT_FOUND` | 없는·삭제된·만료된 초안 | "QR을 다시 받아주세요"와 재스캔 |
 | 409 | `IDEMPOTENCY_CONFLICT` | 같은 멱등 키에 다른 요청을 사용 | 새 키로 한 번만 다시 시도 |
-| 429 | `RATE_LIMITED` | 요청 제한 초과 | `Retry-After` 뒤 재시도 |
+| 429 | API Gateway 기본 오류 응답 | 요청 제한 초과 | 잠시 뒤 재시도 |
 | 500 | `INTERNAL_ERROR` | 처리 실패 | 안내 후 재시도 |
 | 503 | `SERVICE_UNAVAILABLE` | 일시적 서비스·네트워크 오류 | 재시도 버튼 제공 |
 
-`requestId`는 고객 지원과 CloudWatch 로그 연결에만 사용합니다. 토큰·개인정보·결제수단은 오류 응답과 로그에 포함하지 않습니다.
+Lambda가 생성한 오류의 `requestId`는 고객 지원과 CloudWatch 로그 연결에만 사용합니다. API Gateway 단계에서 제한된 429 응답은 Lambda 이전에 반환되므로 이 오류 본문 형식과 다를 수 있습니다. 토큰·개인정보·결제수단은 오류 응답과 로그에 포함하지 않습니다.
 
 ## 도메인 타입
 

@@ -156,17 +156,28 @@ Resources:
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
-              - Sid: DeployNamedStack
+              - Sid: CreateOrUpdateOnlyPreppedProductionStack
                 Effect: Allow
                 Action:
                   - cloudformation:CreateChangeSet
                   - cloudformation:CreateStack
+                  - cloudformation:UpdateStack
+                Resource: !Sub arn:${AWS::Partition}:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/prepped-prod-order-api/*
+                Condition:
+                  StringEquals:
+                    cloudformation:RoleArn: !GetAtt CloudFormationExecutionRole.Arn
+              - Sid: InspectOrExecuteOnlyPreppedProductionStack
+                Effect: Allow
+                Action:
+                  - cloudformation:DeleteChangeSet
                   - cloudformation:DescribeChangeSet
                   - cloudformation:DescribeStackEvents
                   - cloudformation:DescribeStacks
                   - cloudformation:ExecuteChangeSet
-                  - cloudformation:GetTemplateSummary
-                  - cloudformation:UpdateStack
+                Resource: !Sub arn:${AWS::Partition}:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/prepped-prod-order-api/*
+              - Sid: ReadTemplateSummary
+                Effect: Allow
+                Action: cloudformation:GetTemplateSummary
                 Resource: "*"
               - Sid: UploadDeploymentArtifacts
                 Effect: Allow

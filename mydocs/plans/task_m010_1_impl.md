@@ -1,7 +1,7 @@
 # Task M010 #1 구현계획서
 
-수행계획서: [`task_m010_1.md`](task_m010_1.md)  
-GitHub Issue: [#1](https://github.com/postmelee/Prepped/issues/1)  
+수행계획서: [`task_m010_1.md`](task_m010_1.md)
+GitHub Issue: [#1](https://github.com/postmelee/Prepped/issues/1)
 마일스톤: M010
 
 ## 단계 개요

@@ -1,7 +1,7 @@
 # Task M010 #1 Stage 1 완료 보고서
 
-GitHub Issue: [#1](https://github.com/postmelee/Prepped/issues/1)  
-구현계획서: [`task_m010_1_impl.md`](../plans/task_m010_1_impl.md)  
+GitHub Issue: [#1](https://github.com/postmelee/Prepped/issues/1)
+구현계획서: [`task_m010_1_impl.md`](../plans/task_m010_1_impl.md)
 Stage: 1
 
 ## 단계 목적

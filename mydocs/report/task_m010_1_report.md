@@ -1,6 +1,6 @@
 # Task M010 #1 최종 결과보고서
 
-GitHub Issue: [#1](https://github.com/postmelee/Prepped/issues/1)  
+GitHub Issue: [#1](https://github.com/postmelee/Prepped/issues/1)
 마일스톤: M010
 
 ## 작업 요약

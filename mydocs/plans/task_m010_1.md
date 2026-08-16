@@ -1,6 +1,6 @@
 # Task M010 #1 수행계획서
 
-GitHub Issue: [#1](https://github.com/postmelee/Prepped/issues/1)  
+GitHub Issue: [#1](https://github.com/postmelee/Prepped/issues/1)
 마일스톤: M010
 
 ## 목적

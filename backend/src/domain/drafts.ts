@@ -198,8 +198,14 @@ export class DraftService {
       totalPrice: draft.totalPrice,
       currency: draft.currency,
     };
-    await this.repository.saveCompletion(token, idempotencyKey, order, draft.expiresAt);
-    return { order, idempotentReplay: false };
+    try {
+      await this.repository.saveCompletion(token, idempotencyKey, order, draft.expiresAt);
+      return { order, idempotentReplay: false };
+    } catch (error) {
+      const concurrentCompletion = await this.repository.findCompletion(token, idempotencyKey);
+      if (concurrentCompletion) return { order: concurrentCompletion, idempotentReplay: true };
+      throw error;
+    }
   }
 
   private resolveStore(storeId: string): DraftSnapshot["store"] {

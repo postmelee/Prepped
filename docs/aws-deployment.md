@@ -97,7 +97,7 @@ AWS는 GitHub OIDC 역할에 `token.actions.githubusercontent.com:sub` 조건을
 
 ### 계정 부트스트랩 템플릿
 
-[`backend/infra/github-oidc-bootstrap.yaml`](../backend/infra/github-oidc-bootstrap.yaml)은 GitHub OIDC Provider, `PreppedGitHubDeployProduction` 역할, `PreppedCloudFormationExecution` 역할을 별도 CloudFormation 스택으로 만듭니다. GitHub 역할은 `production` Environment subject 두 가지 형식만 허용하고, CloudFormation 실행 역할은 `prepped-*-order-api` 이름 범위의 Lambda·DynamoDB·로그 그룹·HTTP API 및 지정한 아티팩트 버킷으로 권한을 제한합니다.
+[`backend/infra/github-oidc-bootstrap.yaml`](../backend/infra/github-oidc-bootstrap.yaml)은 GitHub OIDC Provider, `PreppedGitHubDeployProduction` 역할, `PreppedCloudFormationExecution` 역할을 별도 CloudFormation 스택으로 만듭니다. GitHub 역할은 `production` Environment subject 두 가지 형식과 `prepped-prod-order-api` 스택, 지정한 CloudFormation 실행 역할로 제한합니다. CloudFormation 실행 역할은 `prepped-*-order-api` 이름 범위의 Lambda·DynamoDB·로그 그룹·HTTP API 및 지정한 아티팩트 버킷으로 권한을 제한합니다.
 
 계정 부트스트랩 관리자는 IAM Identity Center 임시 자격 증명으로 아래 명령을 실행합니다. 현재 해커톤 계정의 버킷명은 `prepped-prod-sam-artifacts-845081398362`입니다.
 
@@ -174,7 +174,7 @@ MVP에는 별도 애플리케이션 비밀이 없습니다. 결제·사용자 �
 3. `main` 병합 후 `Deploy Backend to AWS`가 `production` Environment 승인과 OIDC 역할 가정을 기다립니다.
 4. 워크플로가 다시 테스트·SAM 검증을 실행한 뒤 전용 S3 버킷으로 패키징하고 CloudFormation 실행 역할을 통해 `prepped-prod-order-api`를 배포합니다.
 5. 배포 후 `GET /v1/health`, 초안 생성·조회·완료, 멱등 재시도, QR 재사용, CORS를 자동 스모크 테스트합니다. 토큰이나 주문 내용은 로그에 출력하지 않습니다.
-6. CloudWatch 오류·지연과 AWS Budgets 알림을 확인합니다.
+6. HTTP API Stage는 기본 10 RPS·burst 20으로 제한합니다. CloudWatch 오류·지연과 AWS Budgets 알림을 확인합니다.
 
 SAM으로 GitHub Actions 배포를 구성하는 기본 흐름은 [AWS SAM GitHub Actions 배포 문서](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/deploying-using-github.html)를 참조합니다. 이 프로젝트는 장기 액세스 키 예시 대신 앞 절의 OIDC 자격 증명을 사용합니다.
 
@@ -206,7 +206,7 @@ SAM으로 GitHub Actions 배포를 구성하는 기본 흐름은 [AWS SAM GitHub
 - [ ] IAM Identity Center 관리자·개발자 개인 계정과 MFA 설정
 - [ ] 개발·프로덕션 역할이 최소 권한이고 `PassRole` 범위가 제한됨
 - [x] GitHub OIDC Provider와 `postmelee/Prepped`의 `main` 조건 설정
-- [x] GitHub `production` Environment가 `main`만 허용
+- [ ] GitHub `production` Environment 배포 브랜치 정책을 `main`으로 제한
 - [x] `production` Environment 변수 9개와 전용 SAM 아티팩트 버킷 설정
 - [x] OIDC 배포 역할과 CloudFormation 실행 역할을 분리하고 `iam:PassRole` 범위를 실행 역할 하나로 제한
 - [x] CORS Origin이 실제 ChatGPT Sites URL로 제한됨

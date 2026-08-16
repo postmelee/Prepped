@@ -2,6 +2,15 @@
 
 import { useEffect, useMemo, useState } from "react";
 import QRCode from "qrcode";
+import {
+  copyShareText,
+  countQrMenus,
+  countQrStores,
+  createQrShareUrl,
+  getStorePayload,
+  parseQrPayload,
+  readSharedQrPayload,
+} from "./lib/qr-share";
 
 type MenuItem = {
   id: number;
@@ -51,7 +60,6 @@ export default function Home() {
   const [category, setCategory] = useState<MenuItem["category"]>("burger");
   const [selectedIds, setSelectedIds] = useState<number[]>(DEFAULT_IDS);
   const [savedIds, setSavedIds] = useState<number[]>(DEFAULT_IDS);
-  const [storeEnabled, setStoreEnabled] = useState(true);
   const [qrUrl, setQrUrl] = useState("");
   const [cartOpen, setCartOpen] = useState(false);
   const [savedNotice, setSavedNotice] = useState(false);
@@ -59,6 +67,9 @@ export default function Home() {
   const [editingSavedStore, setEditingSavedStore] = useState(false);
   const [editOriginTab, setEditOriginTab] = useState<SavedViewTab>("settings");
   const [pendingLeaveTarget, setPendingLeaveTarget] = useState<SavedViewTab | null>(null);
+  const [sharedPayload, setSharedPayload] = useState<string | null>(null);
+  const [shareQueryError, setShareQueryError] = useState(false);
+  const [shareNotice, setShareNotice] = useState<{ message: string; error: boolean } | null>(null);
 
   /* eslint-disable react-hooks/set-state-in-effect -- Browser storage is only available after the server-rendered page mounts. */
   useEffect(() => {
@@ -70,25 +81,37 @@ export default function Home() {
           setSavedIds(parsed.savedIds);
           setSelectedIds(parsed.savedIds);
         }
-        if (typeof parsed.storeEnabled === "boolean") setStoreEnabled(parsed.storeEnabled);
       }
     } catch {
       // Keep the useful demo combination if local storage is unavailable.
-    } finally {
-      setHydrated(true);
     }
+
+    const shared = readSharedQrPayload(window.location.search);
+    setSharedPayload(shared.payload);
+    setShareQueryError(shared.error === "invalid");
+    setHydrated(true);
   }, []);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   useEffect(() => {
     if (!hydrated) return;
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ savedIds, storeEnabled }));
-  }, [savedIds, storeEnabled, hydrated]);
+    try {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ savedIds, storeEnabled: true }));
+    } catch {
+      // The QR remains useful if storage is blocked by the browser.
+    }
+  }, [savedIds, hydrated]);
 
-  const qrPayload = useMemo(
-    () => (storeEnabled && savedIds.length ? `mcdonald={${savedIds.join(",")}}` : "menu={}"),
-    [savedIds, storeEnabled],
+  const localQrPayload = useMemo(
+    () => (savedIds.length ? `mcdonald={${savedIds.join(",")}}` : "menu={}"),
+    [savedIds],
   );
+  const qrPayload = sharedPayload ?? localQrPayload;
+  const qrGroups = parseQrPayload(qrPayload) ?? [];
+  const qrMenuCount = countQrMenus(qrPayload);
+  const qrStoreCount = countQrStores(qrPayload);
+  const mcdonaldPayload = getStorePayload(qrPayload, "mcdonald");
+  const mcdonaldGroup = qrGroups.find((group) => group.store === "mcdonald");
 
   useEffect(() => {
     let active = true;
@@ -113,6 +136,44 @@ export default function Home() {
   const total = selectedItems.reduce((sum, item) => sum + item.price, 0);
   const savedTotal = savedItems.reduce((sum, item) => sum + item.price, 0);
   const menuForCategory = MENU_ITEMS.filter((item) => item.category === category);
+  const mcdonaldQrNames = (mcdonaldGroup?.menuIds ?? []).map(
+    (menuId) => getItem(Number(menuId))?.name ?? `메뉴 ${menuId}`,
+  );
+
+  function fallbackCopy(text: string) {
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.setAttribute("readonly", "");
+    textarea.style.position = "fixed";
+    textarea.style.opacity = "0";
+    document.body.appendChild(textarea);
+    textarea.select();
+    const copied = document.execCommand("copy");
+    textarea.remove();
+    return copied;
+  }
+
+  async function copyQrLink(payload: string, targetName: string) {
+    try {
+      const shareUrl = createQrShareUrl(window.location.origin, payload);
+      await copyShareText(shareUrl, {
+        writeClipboard: navigator.clipboard?.writeText.bind(navigator.clipboard),
+        fallbackCopy,
+      });
+      setShareNotice({ message: `${targetName} 링크를 복사했어요`, error: false });
+    } catch {
+      setShareNotice({ message: "링크를 복사하지 못했어요. 다시 눌러주세요", error: true });
+    }
+    window.setTimeout(() => setShareNotice(null), 2800);
+  }
+
+  function returnToLocalQr() {
+    const url = new URL(window.location.href);
+    url.searchParams.delete("qr");
+    window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+    setSharedPayload(null);
+    setShareQueryError(false);
+  }
 
   function startCreate() {
     setSelectedIds(savedIds);
@@ -163,7 +224,6 @@ export default function Home() {
     if (!selectedIds.length) return;
     const nextTab = pendingLeaveTarget ?? editOriginTab;
     setSavedIds(selectedIds);
-    setStoreEnabled(true);
     setEditingSavedStore(false);
     setPendingLeaveTarget(null);
     setStep("store");
@@ -180,7 +240,6 @@ export default function Home() {
 
   function saveMenu() {
     setSavedIds(selectedIds);
-    setStoreEnabled(true);
     setEditingSavedStore(false);
     setPendingLeaveTarget(null);
     setCartOpen(false);
@@ -199,6 +258,25 @@ export default function Home() {
               <h1>내 메뉴 QR</h1>
             </header>
 
+            {sharedPayload && (
+              <div className="shared-qr-banner" role="status">
+                <div>
+                  <strong>공유받은 QR이에요</strong>
+                  <span>내 설정 메뉴는 바뀌지 않아요</span>
+                </div>
+                <button type="button" onClick={returnToLocalQr}>내 QR 보기</button>
+              </div>
+            )}
+
+            {shareQueryError && (
+              <div className="shared-qr-banner error" role="alert">
+                <div>
+                  <strong>링크를 읽을 수 없어요</strong>
+                  <span>안전하게 내 QR을 보여드려요</span>
+                </div>
+              </div>
+            )}
+
             <div className="qr-card">
               <div className="qr-frame" aria-label={`QR 데이터: ${qrPayload}`}>
                 {qrUrl ? (
@@ -213,7 +291,21 @@ export default function Home() {
                 <span className="qr-corner corner-four" />
               </div>
               <strong>키오스크 카메라에 보여주세요</strong>
-              <p>{storeEnabled ? `${savedItems.length}개 메뉴가 담겨 있어요` : "QR에 포함된 매장이 없어요"}</p>
+              <p>
+                {qrStoreCount > 1
+                  ? `${qrStoreCount}개 매장 · ${qrMenuCount}개 메뉴가 담겨 있어요`
+                  : `${qrMenuCount}개 메뉴가 담겨 있어요`}
+              </p>
+              <button
+                className="share-all-button"
+                type="button"
+                onClick={() => copyQrLink(qrPayload, "내 한끼 QR")}
+                disabled={qrMenuCount === 0}
+                aria-label="내 한끼 QR 링크 복사"
+              >
+                <span aria-hidden="true">↗</span>
+                내 한끼 QR 복사
+              </button>
             </div>
 
             <section className="qr-info" aria-labelledby="qr-info-title">
@@ -221,26 +313,21 @@ export default function Home() {
                 <h2 id="qr-info-title">QR 정보</h2>
                 <button className="text-button" type="button" onClick={editSavedStore}>메뉴 바꾸기</button>
               </div>
-              <div className={`store-toggle ${storeEnabled ? "enabled" : ""}`}>
+              <div className="store-share-row">
                 <div className="brand-mark mcdonald-mark" aria-hidden="true">M</div>
-                <button
-                  type="button"
-                  className="store-copy"
-                  onClick={() => setStoreEnabled((enabled) => !enabled)}
-                  aria-label={`맥도날드 QR 정보 ${storeEnabled ? "끄기" : "켜기"}`}
-                >
+                <div className="store-copy">
                   <strong>맥도날드</strong>
-                  <span>{savedItems.map((item) => item.name).join(" · ") || "메뉴 없음"}</span>
-                </button>
+                  <span>{mcdonaldQrNames.join(" · ") || "메뉴 없음"}</span>
+                </div>
                 <button
-                  className="toggle"
-                  role="switch"
-                  aria-checked={storeEnabled}
-                  aria-label="맥도날드 QR 포함"
-                  onClick={() => setStoreEnabled((enabled) => !enabled)}
+                  className="store-share-button"
+                  aria-label="맥도날드 메뉴 QR 링크 복사"
+                  onClick={() => mcdonaldPayload && copyQrLink(mcdonaldPayload, "맥도날드 메뉴")}
+                  disabled={!mcdonaldPayload || !qrGroups.find((group) => group.store === "mcdonald")?.menuIds.length}
                   type="button"
                 >
-                  <span />
+                  <span aria-hidden="true">↗</span>
+                  공유
                 </button>
               </div>
             </section>
@@ -265,9 +352,7 @@ export default function Home() {
                     <h2 id="mcdonald-settings-title">맥도날드</h2>
                     <span>{savedItems.length}개 메뉴</span>
                   </div>
-                  <span className={`qr-status ${storeEnabled ? "included" : "excluded"}`}>
-                    {storeEnabled ? "QR 사용 중" : "QR 제외"}
-                  </span>
+                  <span className="qr-status included">QR 사용 중</span>
                 </div>
 
                 {savedItems.length ? (
@@ -482,6 +567,7 @@ export default function Home() {
               <h2 id="leave-dialog-title">변경한 메뉴를 저장할까요?</h2>
               <p id="leave-dialog-description">저장하지 않으면 기존 메뉴가 그대로 유지돼요.</p>
               <div className="leave-dialog-actions">
+                {/* eslint-disable-next-line jsx-a11y/no-autofocus -- The safe discard action is intentionally the default. */}
                 <button className="discard-draft-button" type="button" onClick={discardDraftAndLeave} autoFocus>
                   저장하지 않음
                 </button>
@@ -499,6 +585,11 @@ export default function Home() {
         )}
 
         {savedNotice && <div className="toast" role="status">QR이 새 메뉴로 바뀌었어요</div>}
+        {shareNotice && (
+          <div className={`toast ${shareNotice.error ? "error" : ""}`} role={shareNotice.error ? "alert" : "status"}>
+            {shareNotice.message}
+          </div>
+        )}
       </section>
     </main>
   );

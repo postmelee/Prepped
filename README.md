@@ -1,4 +1,6 @@
-# Prepped
+# Prepped (한끼패스)
+
+<img width="300" alt="exec-c3558693-84a5-454f-a819-6b12c3faae32" src="https://github.com/user-attachments/assets/5bb294b2-7b98-43c1-8f76-51b8d86e1981" />
 
 > 가족이나 사용자가 자주 먹는 메뉴를 미리 준비하고, 시니어는 하나의 QR로 키오스크 주문 단계를 줄이는 서비스
 

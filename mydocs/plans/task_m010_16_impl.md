@@ -134,6 +134,7 @@ Task #16 Stage 3: 하단 고정 UI 통합 검증 완료
 - 복사 실패는 기존 실패 문구와 `role="alert"`를 유지하고 성공은 `role="status"`, `aria-atomic="true"`로 보조기기에 알린다.
 - 연속 클릭 시 이전 타이머가 새 알림을 조기에 지우지 않도록 timer ref를 정리하고, 같은 버튼 재클릭도 animation key가 갱신되게 한다.
 - `prefers-reduced-motion: reduce`에서는 버튼의 spatial transform과 confirmation pop을 제거하고 즉시 상태만 표시한다.
+- 작업지시자의 Stage 4 완료 후 후속 요청에 따라 검증된 현재 소스를 기존 공개 Sites 프로젝트에 배포하고 `/`, `/kiosk`, `/api/catalog/stores` 응답을 확인한다.
 
 ### 검증
 
@@ -162,7 +163,7 @@ Task #16 Stage 4: 공유 성공 모달과 버튼 피드백 추가
 
 - 각 Stage 검증 명령은 단계 보고서 작성 전에 실행한다.
 - 실패한 검증은 단계 완료로 처리하지 않는다.
-- 브라우저 검증은 로컬 `/`과 `/kiosk`를 사용하며 공개 Sites 배포는 변경하지 않는다.
+- 구현 브라우저 검증은 로컬 `/`과 `/kiosk`를 사용하고, 최종 배포 후 공개 `/`, `/kiosk`, `/api/catalog/stores`의 응답을 별도로 확인한다.
 - PR 직전 최신 `origin/devel`과의 차이와 merge 가능성을 다시 확인한다.
 
 ## 커밋

@@ -72,7 +72,7 @@ export function parseSubwayMenuHtml(html, categoryId) {
         categoryId,
         className: attribute(`<li ${block.slice(0, block.indexOf(">"))}>`, "class"),
         name: textByClass(block, "strong", "tit"),
-        imageUrl: new URL(attribute(image, "src") || "/images/common/noneImage.jpg", SUBWAY_BASE).href,
+        imageUrl: new URL(decodeHtml(attribute(image, "src")) || "/images/common/noneImage.jpg", SUBWAY_BASE).href,
       };
     })
     .filter((item) => item.sourceId && item.name);

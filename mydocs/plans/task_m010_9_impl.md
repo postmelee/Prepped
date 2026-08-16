@@ -125,7 +125,7 @@ Task #9 Stage 3: 공유 시나리오와 통합 검증 완료
 - 각 Stage 검증 명령은 단계 보고서 작성 전에 실행한다.
 - 실패한 검증은 단계 완료로 처리하지 않는다.
 - 브라우저는 로컬 `/`과 `/kiosk`만 사용하며 공개 URL은 변경하지 않는다.
-- 적층 base 차이는 `origin/publish/task1...HEAD`로 검사한다.
+- Stage 3에서 PR #2와 PR #10이 병합된 최신 `origin/devel`을 통합했으므로 최종 차이는 `origin/devel...HEAD`로 검사한다.
 
 ## 커밋
 
@@ -144,7 +144,7 @@ Task #9 Stage 3: 공유 시나리오와 통합 검증 완료
 - **Clipboard 실패**: API 거부도 fallback으로 이어지게 하고 최종 실패만 사용자에게 알린다.
 - **공유 query 오염**: parser 허용 문자·그룹·길이 검증과 query 제거 행동을 제공한다.
 - **#7 충돌**: 공유 유틸을 UI에서 분리하고 기존 QR 문법 이외의 저장 모델을 추가하지 않는다.
-- **적층 PR**: 최종 PR base를 `publish/task1`으로 명시하고 PR #2 이후 재기준화 조건을 적는다.
+- **선행 base 변동**: PR 직전 최신 `origin/devel` 통합, 전체 회귀와 `origin/devel...HEAD` diff 검사를 다시 수행한다.
 
 ## 승인 요청 사항
 

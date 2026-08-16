@@ -39,7 +39,7 @@ PR #5에서 매장별 설정 조회·수정과 QR 포함 토글을 제공했지�
 - `localPayload`와 `sharedPayload`를 분리하고 `displayPayload = sharedPayload ?? localPayload`로 렌더링한다. 공유 query는 `localStorage` 쓰기 effect의 입력이 되지 않는다.
 - 매장별 링크 생성은 전체 payload에서 정확한 store key 그룹만 추출하는 일반 함수로 구현해 #7의 다중 매장 문자열을 그대로 수용한다.
 - 메인 QR 카드 전체를 버튼으로 만들지 않고 명확한 `전체 링크 복사` 버튼을 제공한다. 매장 행은 이름·메뉴 요약을 비대화하지 않고 우측에 충분한 터치 영역의 `공유` 버튼을 둔다.
-- 선행 PR #2가 열려 있으므로 PR #5가 포함된 `origin/publish/task1`을 적층 base로 사용한다. 최종 PR도 `publish/task1`을 대상으로 하며 PR #2 병합 후 `devel` 재기준화가 필요함을 기록한다.
+- 작업 시작 시 선행 PR #2가 열려 있어 PR #5가 포함된 `origin/publish/task1`에서 분기했다. Stage 3 중 PR #2와 후속 PR #10이 병합된 최신 `origin/devel`을 통합했으며 최종 PR은 `devel`을 대상으로 한다.
 
 ## 문서 위치 판단
 
@@ -122,7 +122,7 @@ PR #5에서 매장별 설정 조회·수정과 QR 포함 토글을 제공했지�
 - **Clipboard 권한 차이**: 보안 컨텍스트의 Clipboard API를 우선하고 textarea 기반 fallback을 제공한다.
 - **URL 주입과 과대 payload**: 허용 store/id 문자와 그룹 문법을 검증하고 payload 길이를 제한한다.
 - **공유 상태의 로컬 오염**: query payload는 별도 state로만 보관하고 저장 effect에는 연결하지 않는다.
-- **적층 PR**: base `publish/task1`을 명시하고 선행 PR #2 병합 뒤 `devel` 재기준화가 필요함을 PR에 기록한다.
+- **선행 base 변동**: PR 직전 최신 `origin/devel`을 통합하고 `devel...HEAD` diff와 merge 가능성을 다시 검증한다.
 
 ## 승인 요청 사항
 

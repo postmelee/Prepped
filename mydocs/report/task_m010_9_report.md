@@ -61,6 +61,11 @@ GitHub Issue: [#9](https://github.com/postmelee/Prepped/issues/9)
 | 키오스크 QR parser·결제 회귀 | OK — 원문, ID 101·201·301과 결제 완료 확인 |
 | 자동 검증과 빌드 | OK — `npm test` 8/8, ESLint, 최종 vinext 빌드, diff 검사 통과 |
 
+## PR 후속 문구 보완
+
+- 메인 QR 공유 버튼의 사용자 문구를 기능 중심의 `전체 링크 복사`에서 서비스 언어인 `내 한끼 QR 복사`로 변경했다.
+- 접근성 이름과 복사 완료 안내, README와 기술 명세도 같은 용어로 통일했으며 전체 매장 payload를 복사하는 동작은 유지했다.
+
 ### 단계별 검증 결과
 
 - Stage 1: [`task_m010_9_stage1.md`](../working/task_m010_9_stage1.md) — 공유 모듈·UI와 단위 테스트, lint·빌드 통과

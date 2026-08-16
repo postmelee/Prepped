@@ -299,12 +299,12 @@ export default function Home() {
               <button
                 className="share-all-button"
                 type="button"
-                onClick={() => copyQrLink(qrPayload, "전체 메뉴")}
+                onClick={() => copyQrLink(qrPayload, "내 한끼 QR")}
                 disabled={qrMenuCount === 0}
-                aria-label="모든 매장의 메뉴 QR 링크 복사"
+                aria-label="내 한끼 QR 링크 복사"
               >
                 <span aria-hidden="true">↗</span>
-                전체 링크 복사
+                내 한끼 QR 복사
               </button>
             </div>
 

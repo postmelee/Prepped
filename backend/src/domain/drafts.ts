@@ -114,6 +114,7 @@ export class InMemoryDraftRepository implements DraftRepository {
   }
 
   async saveCompletion(token: string, idempotencyKey: string, order: CompletedOrder, _expiresAt: string): Promise<void> {
+    void _expiresAt;
     this.completions.set(`${token}:${idempotencyKey}`, structuredClone(order));
   }
 }

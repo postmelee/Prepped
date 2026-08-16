@@ -101,7 +101,7 @@ p {
 .qr-frame {
   position: relative;
   width: min(72vw, 300px);
-  margin: 0 auto 20px;
+  margin: 0 auto 14px;
   padding: 13px;
   background: #fff;
 }
@@ -136,6 +136,83 @@ p {
 .corner-two { top: 0; right: 0; border-width: 4px 4px 0 0; border-radius: 0 10px 0 0; }
 .corner-three { bottom: 0; left: 0; border-width: 0 0 4px 4px; border-radius: 0 0 0 10px; }
 .corner-four { bottom: 0; right: 0; border-width: 0 4px 4px 0; border-radius: 0 0 10px; }
+
+.qr-store-availability {
+  width: min(100%, 340px);
+  margin: 0 auto 18px;
+  border: 1px solid #c6d8cc;
+  border-radius: 18px;
+  padding: 12px 13px 13px;
+  background: var(--green-soft);
+  text-align: left;
+}
+
+.qr-store-availability-label {
+  display: block;
+  margin: 0 2px 9px;
+  color: var(--green);
+  font-size: 13px;
+  font-weight: 850;
+  letter-spacing: -0.01em;
+}
+
+.qr-store-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.qr-store-badges li {
+  display: inline-flex;
+  min-height: 46px;
+  flex: 1 1 132px;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid rgba(23, 79, 58, 0.14);
+  border-radius: 14px;
+  padding: 6px 11px 6px 7px;
+  background: #fff;
+}
+
+.qr-store-badges strong {
+  min-width: 0;
+  overflow: hidden;
+  color: #17241d;
+  font-size: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.qr-store-mark {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  border-radius: 10px;
+}
+
+.qr-store-mark.mcdonald-mark {
+  padding-right: 3px;
+  font-size: 21px;
+}
+
+.qr-store-mark.subway-mark {
+  font-size: 19px;
+}
+
+.generic-mark {
+  color: #fff;
+  background: var(--green);
+  font-size: 18px;
+}
+
+.qr-store-empty {
+  display: block;
+  color: var(--muted);
+  font-size: 16px;
+}
 
 .qr-card > strong {
   display: block;

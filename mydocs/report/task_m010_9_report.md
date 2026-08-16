@@ -61,6 +61,13 @@ GitHub Issue: [#9](https://github.com/postmelee/Prepped/issues/9)
 | 키오스크 QR parser·결제 회귀 | OK — 원문, ID 101·201·301과 결제 완료 확인 |
 | 자동 검증과 빌드 | OK — `npm test` 8/8, ESLint, 최종 vinext 빌드, diff 검사 통과 |
 
+## PR 후속 UX 보완
+
+- QR 바로 아래에 `사용 가능한 매장` 영역을 추가해 시니어 사용자가 QR 사용처를 촬영 전에 확인할 수 있도록 했다.
+- 메뉴 ID가 하나 이상 담긴 매장만 큰 로고형 배지로 표시하며, 공유 QR의 다중 매장 payload도 자동으로 여러 배지로 표현한다.
+- 맥도날드·서브웨이는 한글 매장명과 브랜드 색상을 사용하고, 이후 추가되는 매장 키도 일반 배지로 안전하게 표시한다.
+- 후속 반영 뒤 ESLint, vinext build, 전체 자동 테스트 8개와 diff 검사를 다시 통과했다.
+
 ### 단계별 검증 결과
 
 - Stage 1: [`task_m010_9_stage1.md`](../working/task_m010_9_stage1.md) — 공유 모듈·UI와 단위 테스트, lint·빌드 통과

@@ -33,6 +33,8 @@ test("server-renders the Prepped mobile QR route", async () => {
   assert.match(html, /Prepped 메뉴 QR 앱/);
   assert.match(html, /내 메뉴 QR/);
   assert.match(html, /mcdonald=\{101,201,301\}/);
+  assert.match(html, /사용 가능한 매장/);
+  assert.match(html, /이 QR을 사용할 수 있는 매장/);
   assert.match(html, /전체 링크 복사/);
   assert.match(html, /맥도날드 메뉴 QR 링크 복사/);
   assert.match(html, /메뉴 만들기/);
@@ -79,6 +81,9 @@ test("keeps the PWA and QR contracts explicit", async () => {
   assert.match(mobileSource, /mcdonald=\{\$\{savedIds\.join\(","\)\}\}/);
   assert.match(mobileSource, /const qrPayload = sharedPayload \?\? localQrPayload/);
   assert.match(mobileSource, /전체 링크 복사/);
+  assert.match(mobileSource, /const availableQrStores = qrGroups[\s\S]*?menuIds\.length > 0/);
+  assert.match(mobileSource, /사용 가능한 매장/);
+  assert.match(mobileSource, /STORE_PRESENTATION[\s\S]*?맥도날드[\s\S]*?서브웨이/);
   assert.match(mobileSource, /맥도날드 메뉴 QR 링크 복사/);
   assert.match(mobileSource, /공유받은 QR이에요/);
   assert.match(mobileSource, /내 설정 메뉴는 바뀌지 않아요/);

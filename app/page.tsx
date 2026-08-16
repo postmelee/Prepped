@@ -43,6 +43,11 @@ const CATEGORIES = [
   { id: "drink", name: "음료", icon: "🥤" },
 ] as const;
 
+const STORE_PRESENTATION: Record<string, { name: string; mark: string; markClassName: string }> = {
+  mcdonald: { name: "맥도날드", mark: "M", markClassName: "mcdonald-mark" },
+  subway: { name: "서브웨이", mark: "S", markClassName: "subway-mark" },
+};
+
 const DEFAULT_IDS = [101, 201, 301];
 const STORAGE_KEY = "onemeal-menu-v1";
 
@@ -52,6 +57,14 @@ function formatPrice(price: number) {
 
 function getItem(id: number) {
   return MENU_ITEMS.find((item) => item.id === id);
+}
+
+function getStorePresentation(store: string) {
+  return STORE_PRESENTATION[store] ?? {
+    name: store,
+    mark: store.slice(0, 1).toUpperCase(),
+    markClassName: "generic-mark",
+  };
 }
 
 export default function Home() {
@@ -112,6 +125,9 @@ export default function Home() {
   const qrStoreCount = countQrStores(qrPayload);
   const mcdonaldPayload = getStorePayload(qrPayload, "mcdonald");
   const mcdonaldGroup = qrGroups.find((group) => group.store === "mcdonald");
+  const availableQrStores = qrGroups
+    .filter((group) => group.menuIds.length > 0)
+    .map((group) => ({ ...group, ...getStorePresentation(group.store) }));
 
   useEffect(() => {
     let active = true;
@@ -289,6 +305,26 @@ export default function Home() {
                 <span className="qr-corner corner-two" />
                 <span className="qr-corner corner-three" />
                 <span className="qr-corner corner-four" />
+              </div>
+              <div className="qr-store-availability" aria-label="이 QR을 사용할 수 있는 매장">
+                <span className="qr-store-availability-label">사용 가능한 매장</span>
+                {availableQrStores.length ? (
+                  <ul className="qr-store-badges">
+                    {availableQrStores.map((store) => (
+                      <li key={store.store}>
+                        <span
+                          className={`brand-mark qr-store-mark ${store.markClassName}`}
+                          aria-hidden="true"
+                        >
+                          {store.mark}
+                        </span>
+                        <strong>{store.name}</strong>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <strong className="qr-store-empty">등록된 매장 없음</strong>
+                )}
               </div>
               <strong>키오스크 카메라에 보여주세요</strong>
               <p>

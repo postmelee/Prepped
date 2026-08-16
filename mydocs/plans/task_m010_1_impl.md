@@ -68,18 +68,21 @@ Task #1 Stage 1: Prepped 제품명과 기술 명세 정리
 - `public/og.png`
 - `public/icon-192.png`
 - `public/icon-512.png`
+- `tests/rendered-html.test.mjs`
 - 모바일·키오스크 로컬 브라우저 검증 결과
 
 ### 변경 내용
 
 - 기존 제품명이 포함된 소셜 미리보기를 `Prepped` 브랜드 이미지로 교체한다.
 - 앱 아이콘을 모바일 홈 화면에서 식별 가능한 `Prepped` 자산으로 갱신한다.
-- 모바일에서 메뉴 선택·저장·QR 갱신을 확인하고 키오스크에서 카메라 시작과 QR 이미지 업로드 대체 흐름을 확인한다.
+- 모바일에서 메뉴 선택·저장·QR 갱신을 확인하고 키오스크에서 카메라 시작과 샘플 QR 대체 흐름을 확인한다.
+- 폐기된 스타터 스켈레톤 검증을 Prepped 두 경로, PWA manifest와 QR 계약 검증으로 교체한다.
 
 ### 검증
 
 ```bash
 npm run build
+npm test
 file public/og.png public/icon-192.png public/icon-512.png
 git diff --check
 ```
@@ -87,7 +90,7 @@ git diff --check
 수동/브라우저 확인:
 
 - `/`에서 큰 터치 영역, 매장→카테고리→메뉴, 선택 목록, 저장 후 QR 생성 확인
-- `/kiosk`에서 카메라 권한 요청, QR 이미지 업로드, 인식 문자열과 결제 버튼 상태 확인
+- `/kiosk`에서 카메라 권한 요청, 샘플 QR, 인식 문자열과 결제 버튼 상태 확인
 - manifest의 아이콘 경로와 이미지 크기 확인
 
 ### 커밋

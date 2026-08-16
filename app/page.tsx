@@ -482,6 +482,7 @@ export default function Home() {
               <h2 id="leave-dialog-title">변경한 메뉴를 저장할까요?</h2>
               <p id="leave-dialog-description">저장하지 않으면 기존 메뉴가 그대로 유지돼요.</p>
               <div className="leave-dialog-actions">
+                {/* eslint-disable-next-line jsx-a11y/no-autofocus -- The safe discard action receives initial focus in this destructive-choice dialog. */}
                 <button className="discard-draft-button" type="button" onClick={discardDraftAndLeave} autoFocus>
                   저장하지 않음
                 </button>

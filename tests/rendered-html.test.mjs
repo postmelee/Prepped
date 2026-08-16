@@ -68,6 +68,7 @@ test("keeps the PWA and QR contracts explicit", async () => {
     kioskSelectorSource,
     kioskResultSource,
     shareSource,
+    stylesSource,
   ] = await Promise.all([
     readFile(new URL("../public/manifest.webmanifest", import.meta.url), "utf8"),
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
@@ -79,6 +80,7 @@ test("keeps the PWA and QR contracts explicit", async () => {
     readFile(new URL("../app/components/kiosk-store-selector.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/components/kiosk-menu-result.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/lib/qr-share.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
   ]);
 
   const manifest = JSON.parse(manifestSource);
@@ -100,16 +102,23 @@ test("keeps the PWA and QR contracts explicit", async () => {
   assert.match(mobileSource, /serializeQrPayload/);
   assert.match(mobileSource, /const qrPayload = sharedPayload \?\? localQrPayload/);
   assert.match(mobileSource, /내 한끼 QR 복사/);
+  assert.match(mobileSource, /공유 링크가 복사되었습니다\./);
+  assert.match(mobileSource, /className=\{`share-confirmation/);
+  assert.match(mobileSource, /aria-atomic="true"/);
+  assert.match(mobileSource, /shareNoticeTimerRef/);
+  assert.match(mobileSource, /shareButtonFeedback/);
   assert.doesNotMatch(mobileSource, /전체 링크 복사|모든 매장의 메뉴 QR 링크 복사/);
   assert.match(mobileSource, /\$\{store\.name\} 메뉴 QR 링크 복사/);
   assert.match(mobileSource, /공유받은 QR이에요/);
   assert.match(mobileSource, /내 설정 메뉴는 바뀌지 않아요/);
   assert.match(mobileSource, /function returnToLocalQr\(\)[\s\S]*?searchParams\.delete\("qr"\)/);
-  assert.match(mobileSource, /role="switch"/);
+  assert.doesNotMatch(mobileSource, /role="switch"/);
   assert.match(mobileSource, /type AppTab = "qr" \| "create" \| "settings"/);
   assert.match(mobileSource, /<h1>내 설정 메뉴<\/h1>/);
   assert.match(settingsSource, /QR 사용 중/);
   assert.match(settingsSource, /설정 없음/);
+  assert.match(settingsSource, /className=\{`qr-status status-button/);
+  assert.match(settingsSource, /onClick=\{\(\) => onToggle\(store\.id\)\}/);
   assert.match(catalogSource, /예상 가격/);
   assert.match(catalogSource, /공식 확인 가격/);
   assert.match(catalogSource, /onError=\{\(\) => setFailed\(true\)\}/);
@@ -135,6 +144,32 @@ test("keeps the PWA and QR contracts explicit", async () => {
   assert.match(shareSource, /url\.searchParams\.set\("qr", payload\)/);
   assert.match(shareSource, /params\.getAll\("qr"\)\.length !== 1/);
   assert.match(shareSource, /environment\.fallbackCopy\(text\)/);
+  assert.match(
+    stylesSource,
+    /\.bottom-nav\s*\{[^}]*position:\s*fixed;[^}]*left:\s*50%;[^}]*width:\s*min\(100%, 480px\);[^}]*transform:\s*translateX\(-50%\);/s,
+  );
+  assert.match(
+    stylesSource,
+    /\.sheet-backdrop\s*\{[^}]*position:\s*fixed;[^}]*left:\s*50%;[^}]*width:\s*min\(100%, 480px\);[^}]*transform:\s*translateX\(-50%\);/s,
+  );
+  assert.match(
+    stylesSource,
+    /\.bottom-sheet\s*\{[^}]*max-height:\s*min\(88dvh, 100%\);[^}]*overscroll-behavior:\s*contain;/s,
+  );
+  assert.match(
+    stylesSource,
+    /\.store-toggle\s*>\s*\.store-share-button\s*\{[^}]*grid-column:\s*3;[^}]*grid-row:\s*1;[^}]*justify-self:\s*end;/s,
+  );
+  assert.match(
+    stylesSource,
+    /\.share-confirmation\s*\{[^}]*position:\s*fixed;[^}]*top:\s*50%;[^}]*left:\s*50%;[^}]*width:\s*min\(calc\(100% - 48px\), 360px\);/s,
+  );
+  assert.match(stylesSource, /\.share-button-feedback\s*\{[^}]*share-button-confirm 360ms/s);
+  assert.match(stylesSource, /@keyframes share-confirmation-in/);
+  assert.match(
+    stylesSource,
+    /@media \(prefers-reduced-motion: reduce\)[\s\S]*?\.share-confirmation[\s\S]*?animation:\s*none !important;/,
+  );
   assert.match(kioskSource, /navigator\.mediaDevices\.getUserMedia/);
   assert.match(kioskSource, /QR 문자열을 직접 입력할 수도 있어요/);
   assert.match(kioskSource, /다중 매장 샘플 QR로 미리 보기/);

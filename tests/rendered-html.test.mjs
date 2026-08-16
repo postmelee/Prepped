@@ -68,6 +68,7 @@ test("keeps the PWA and QR contracts explicit", async () => {
     kioskSelectorSource,
     kioskResultSource,
     shareSource,
+    stylesSource,
   ] = await Promise.all([
     readFile(new URL("../public/manifest.webmanifest", import.meta.url), "utf8"),
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
@@ -79,6 +80,7 @@ test("keeps the PWA and QR contracts explicit", async () => {
     readFile(new URL("../app/components/kiosk-store-selector.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/components/kiosk-menu-result.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/lib/qr-share.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
   ]);
 
   const manifest = JSON.parse(manifestSource);
@@ -135,6 +137,18 @@ test("keeps the PWA and QR contracts explicit", async () => {
   assert.match(shareSource, /url\.searchParams\.set\("qr", payload\)/);
   assert.match(shareSource, /params\.getAll\("qr"\)\.length !== 1/);
   assert.match(shareSource, /environment\.fallbackCopy\(text\)/);
+  assert.match(
+    stylesSource,
+    /\.bottom-nav\s*\{[^}]*position:\s*fixed;[^}]*left:\s*50%;[^}]*width:\s*min\(100%, 480px\);[^}]*transform:\s*translateX\(-50%\);/s,
+  );
+  assert.match(
+    stylesSource,
+    /\.sheet-backdrop\s*\{[^}]*position:\s*fixed;[^}]*left:\s*50%;[^}]*width:\s*min\(100%, 480px\);[^}]*transform:\s*translateX\(-50%\);/s,
+  );
+  assert.match(
+    stylesSource,
+    /\.bottom-sheet\s*\{[^}]*max-height:\s*min\(88dvh, 100%\);[^}]*overscroll-behavior:\s*contain;/s,
+  );
   assert.match(kioskSource, /navigator\.mediaDevices\.getUserMedia/);
   assert.match(kioskSource, /QR 문자열을 직접 입력할 수도 있어요/);
   assert.match(kioskSource, /다중 매장 샘플 QR로 미리 보기/);

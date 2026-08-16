@@ -431,11 +431,12 @@ p {
 }
 
 .bottom-nav {
-  position: absolute;
+  position: fixed;
   z-index: 20;
-  right: 0;
   bottom: 0;
-  left: 0;
+  left: 50%;
+  width: min(100%, 480px);
+  transform: translateX(-50%);
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   min-height: calc(86px + env(safe-area-inset-bottom));
@@ -1072,9 +1073,13 @@ p {
 }
 
 .sheet-backdrop {
-  position: absolute;
+  position: fixed;
   z-index: 50;
-  inset: 0;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: min(100%, 480px);
+  transform: translateX(-50%);
   display: flex;
   align-items: flex-end;
   background: rgba(15, 18, 15, 0.44);
@@ -1099,8 +1104,10 @@ p {
   z-index: 1;
   width: 100%;
   max-height: 88svh;
+  max-height: min(88dvh, 100%);
   padding: 9px 22px calc(24px + env(safe-area-inset-bottom));
   overflow-y: auto;
+  overscroll-behavior: contain;
   border-radius: 29px 29px 0 0;
   background: #fff;
   box-shadow: 0 -20px 60px rgba(0, 0, 0, 0.13);
@@ -1917,8 +1924,17 @@ button:focus-visible {
   }
 
   .screen { min-height: calc(100svh - 48px); }
-  .bottom-nav { border-radius: 0 0 34px 34px; }
-  .sheet-backdrop { border-radius: 34px; overflow: hidden; }
+  .bottom-nav {
+    bottom: 24px;
+    border-radius: 0 0 34px 34px;
+  }
+
+  .sheet-backdrop {
+    top: 24px;
+    bottom: 24px;
+    border-radius: 34px;
+    overflow: hidden;
+  }
 }
 
 @media (max-width: 820px) {

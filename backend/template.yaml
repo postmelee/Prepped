@@ -1,0 +1,151 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: Prepped 주문 초안 API
+
+Parameters:
+  StageName:
+    Type: String
+    Default: dev
+    AllowedValues: [dev, prod]
+  AllowedOrigins:
+    Type: CommaDelimitedList
+    Description: ChatGPT Sites와 개발 환경의 명시적 허용 Origin 목록
+  QrBaseUrl:
+    Type: String
+    Description: QR에 넣을 키오스크 웹앱 기본 URL
+  DraftTtlDays:
+    Type: Number
+    Default: 30
+    MinValue: 1
+    MaxValue: 365
+
+Globals:
+  Function:
+    Runtime: nodejs22.x
+    Architectures: [arm64]
+    MemorySize: 256
+    Timeout: 10
+    Tracing: Active
+    Environment:
+      Variables:
+        ORDER_TABLE_NAME: !Ref OrderTable
+        PREPPED_ALLOWED_ORIGINS: !Join [",", !Ref AllowedOrigins]
+        PREPPED_QR_BASE_URL: !Ref QrBaseUrl
+        DRAFT_TTL_DAYS: !Ref DraftTtlDays
+
+Resources:
+  OrderApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      CorsConfiguration:
+        AllowOrigins: !Ref AllowedOrigins
+        AllowHeaders: [content-type, idempotency-key]
+        AllowMethods: [GET, POST, OPTIONS]
+
+  OrderTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: pk
+          AttributeType: S
+        - AttributeName: sk
+          AttributeType: S
+      KeySchema:
+        - AttributeName: pk
+          KeyType: HASH
+        - AttributeName: sk
+          KeyType: RANGE
+      TimeToLiveSpecification:
+        AttributeName: expiresAtEpoch
+        Enabled: true
+      SSESpecification:
+        SSEEnabled: true
+      Tags:
+        - Key: Project
+          Value: Prepped
+        - Key: Stage
+          Value: !Ref StageName
+
+  HealthFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .
+      Handler: src/handlers/health.handler
+      Events:
+        Health:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref OrderApi
+            Path: /v1/health
+            Method: GET
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints: [src/handlers/health.ts]
+
+  CreateDraftFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .
+      Handler: src/handlers/create-draft.handler
+      Policies: &OrderTableWritePolicy
+        - Statement:
+            Effect: Allow
+            Action: [dynamodb:GetItem, dynamodb:PutItem, dynamodb:TransactWriteItems]
+            Resource: !GetAtt OrderTable.Arn
+      Events:
+        CreateDraft:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref OrderApi
+            Path: /v1/drafts
+            Method: POST
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints: [src/handlers/create-draft.ts]
+
+  GetDraftFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .
+      Handler: src/handlers/get-draft.handler
+      Policies: *OrderTableWritePolicy
+      Events:
+        GetDraft:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref OrderApi
+            Path: /v1/drafts/{token}
+            Method: GET
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints: [src/handlers/get-draft.ts]
+
+  CompleteDraftFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .
+      Handler: src/handlers/complete-draft.handler
+      Policies: *OrderTableWritePolicy
+      Events:
+        CompleteDraft:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref OrderApi
+            Path: /v1/drafts/{token}/complete
+            Method: POST
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints: [src/handlers/complete-draft.ts]
+
+Outputs:
+  ApiBaseUrl:
+    Description: API Gateway HTTP API 기본 URL
+    Value: !Sub https://${OrderApi}.execute-api.${AWS::Region}.amazonaws.com
+  OrderTableName:
+    Description: 주문 초안 DynamoDB 테이블 이름
+    Value: !Ref OrderTable

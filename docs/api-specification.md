@@ -149,7 +149,7 @@
       "createdAt": "2026-08-16T05:00:00Z",
       "expiresAt": "2026-09-15T05:00:00Z"
     },
-    "qrPayload": "https://{API_BASE_URL}/v1/drafts/opaque-token"
+    "qrPayload": "https://{KIOSK_WEB_BASE_URL}/kiosk?draft=opaque-token"
   }
 }
 ```
@@ -236,7 +236,7 @@ Idempotency-Key: 5a9d3b8c-9f3a-4adc-ae8a-10a9b3477d3c
 
 키오스크는 다음 순서로 QR 값을 판단합니다.
 
-1. URL 경로가 `/v1/drafts/{token}`이면 토큰 형식을 확인하고 초안 조회 API를 호출합니다.
+1. URL 경로가 `/kiosk`이고 `draft` 쿼리가 있으면 토큰 형식을 확인하고 초안 조회 API를 호출합니다.
 2. 없으면 기존 `store={menuId,menuId}` 파서를 사용합니다.
 3. 둘 다 아니면 `VALIDATION_ERROR` 안내와 재스캔 버튼을 제공합니다.
 

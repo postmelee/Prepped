@@ -102,6 +102,11 @@ test("keeps the PWA and QR contracts explicit", async () => {
   assert.match(mobileSource, /serializeQrPayload/);
   assert.match(mobileSource, /const qrPayload = sharedPayload \?\? localQrPayload/);
   assert.match(mobileSource, /내 한끼 QR 복사/);
+  assert.match(mobileSource, /공유 링크가 복사되었습니다\./);
+  assert.match(mobileSource, /className=\{`share-confirmation/);
+  assert.match(mobileSource, /aria-atomic="true"/);
+  assert.match(mobileSource, /shareNoticeTimerRef/);
+  assert.match(mobileSource, /shareButtonFeedback/);
   assert.doesNotMatch(mobileSource, /전체 링크 복사|모든 매장의 메뉴 QR 링크 복사/);
   assert.match(mobileSource, /\$\{store\.name\} 메뉴 QR 링크 복사/);
   assert.match(mobileSource, /공유받은 QR이에요/);
@@ -154,6 +159,16 @@ test("keeps the PWA and QR contracts explicit", async () => {
   assert.match(
     stylesSource,
     /\.store-toggle\s*>\s*\.store-share-button\s*\{[^}]*grid-column:\s*3;[^}]*grid-row:\s*1;[^}]*justify-self:\s*end;/s,
+  );
+  assert.match(
+    stylesSource,
+    /\.share-confirmation\s*\{[^}]*position:\s*fixed;[^}]*top:\s*50%;[^}]*left:\s*50%;[^}]*width:\s*min\(calc\(100% - 48px\), 360px\);/s,
+  );
+  assert.match(stylesSource, /\.share-button-feedback\s*\{[^}]*share-button-confirm 360ms/s);
+  assert.match(stylesSource, /@keyframes share-confirmation-in/);
+  assert.match(
+    stylesSource,
+    /@media \(prefers-reduced-motion: reduce\)[\s\S]*?\.share-confirmation[\s\S]*?animation:\s*none !important;/,
   );
   assert.match(kioskSource, /navigator\.mediaDevices\.getUserMedia/);
   assert.match(kioskSource, /QR 문자열을 직접 입력할 수도 있어요/);

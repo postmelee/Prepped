@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import QRCode from "qrcode";
 
 import { BrandMark, MenuCatalog, type CatalogStep } from "./components/menu-catalog.tsx";
@@ -33,6 +33,7 @@ import {
 
 type AppTab = "qr" | "create" | "settings";
 type SavedViewTab = Exclude<AppTab, "create">;
+type ShareNotice = { message: string; error: boolean; sequence: number };
 
 function formatPrice(price: number) {
   return `${price.toLocaleString("ko-KR")}원`;
@@ -65,7 +66,12 @@ export default function Home() {
   const [directEdit, setDirectEdit] = useState(false);
   const [sharedPayload, setSharedPayload] = useState<string | null>(null);
   const [shareQueryError, setShareQueryError] = useState(false);
-  const [shareNotice, setShareNotice] = useState<{ message: string; error: boolean } | null>(null);
+  const [shareNotice, setShareNotice] = useState<ShareNotice | null>(null);
+  const [shareButtonFeedback, setShareButtonFeedback] = useState<string | null>(null);
+  const shareNoticeTimerRef = useRef<number | null>(null);
+  const shareButtonTimerRef = useRef<number | null>(null);
+  const shareButtonFrameRef = useRef<number | null>(null);
+  const shareNoticeSequenceRef = useRef(0);
 
   const refreshCatalog = useCallback(() => {
     setCatalogLoading(true);
@@ -142,6 +148,21 @@ export default function Home() {
     navigator.serviceWorker.register("/sw.js").catch(() => undefined);
   }, []);
 
+  useEffect(
+    () => () => {
+      if (shareNoticeTimerRef.current !== null) {
+        window.clearTimeout(shareNoticeTimerRef.current);
+      }
+      if (shareButtonTimerRef.current !== null) {
+        window.clearTimeout(shareButtonTimerRef.current);
+      }
+      if (shareButtonFrameRef.current !== null) {
+        window.cancelAnimationFrame(shareButtonFrameRef.current);
+      }
+    },
+    [],
+  );
+
   const menusById = useMemo(
     () =>
       new Map(
@@ -201,18 +222,44 @@ export default function Home() {
     return copied;
   }
 
-  async function copyQrLink(payload: string, targetName: string) {
+  function showShareNotice(message: string, error: boolean) {
+    shareNoticeSequenceRef.current += 1;
+    setShareNotice({ message, error, sequence: shareNoticeSequenceRef.current });
+    if (shareNoticeTimerRef.current !== null) {
+      window.clearTimeout(shareNoticeTimerRef.current);
+    }
+    shareNoticeTimerRef.current = window.setTimeout(() => setShareNotice(null), 2300);
+  }
+
+  function animateShareButton(buttonId: string) {
+    if (shareButtonTimerRef.current !== null) {
+      window.clearTimeout(shareButtonTimerRef.current);
+    }
+    if (shareButtonFrameRef.current !== null) {
+      window.cancelAnimationFrame(shareButtonFrameRef.current);
+    }
+    setShareButtonFeedback(null);
+    shareButtonFrameRef.current = window.requestAnimationFrame(() => {
+      setShareButtonFeedback(buttonId);
+      shareButtonTimerRef.current = window.setTimeout(
+        () => setShareButtonFeedback(null),
+        420,
+      );
+    });
+  }
+
+  async function copyQrLink(payload: string, buttonId: string) {
+    animateShareButton(buttonId);
     try {
       const shareUrl = createQrShareUrl(window.location.origin, payload);
       await copyShareText(shareUrl, {
         writeClipboard: navigator.clipboard?.writeText.bind(navigator.clipboard),
         fallbackCopy,
       });
-      setShareNotice({ message: `${targetName} 링크를 복사했어요`, error: false });
+      showShareNotice("공유 링크가 복사되었습니다.", false);
     } catch {
-      setShareNotice({ message: "링크를 복사하지 못했어요. 다시 눌러주세요", error: true });
+      showShareNotice("링크를 복사하지 못했어요. 다시 눌러주세요", true);
     }
-    window.setTimeout(() => setShareNotice(null), 2800);
   }
 
   function returnToLocalQr() {
@@ -399,9 +446,9 @@ export default function Home() {
                   : "QR에 포함된 메뉴가 없어요"}
               </p>
               <button
-                className="share-all-button"
+                className={`share-all-button ${shareButtonFeedback === "all" ? "share-button-feedback" : ""}`}
                 type="button"
-                onClick={() => copyQrLink(qrPayload, "내 한끼 QR")}
+                onClick={() => copyQrLink(qrPayload, "all")}
                 disabled={qrMenuCount === 0}
                 aria-label="내 한끼 QR 링크 복사"
               >
@@ -446,10 +493,10 @@ export default function Home() {
                         </span>
                       </button>
                       <button
-                        className="store-share-button"
+                        className={`store-share-button ${shareButtonFeedback === `store-${store.id}` ? "share-button-feedback" : ""}`}
                         aria-label={`${store.name} 메뉴 QR 링크 복사`}
                         onClick={() =>
-                          storePayload && copyQrLink(storePayload, `${store.name} 메뉴`)
+                          storePayload && copyQrLink(storePayload, `store-${store.id}`)
                         }
                         disabled={!storePayload || qrMenuIds.length === 0}
                         type="button"
@@ -717,10 +764,15 @@ export default function Home() {
         )}
         {shareNotice && (
           <div
-            className={`toast ${shareNotice.error ? "error" : ""}`}
+            className={`share-confirmation ${shareNotice.error ? "error" : ""}`}
+            key={shareNotice.sequence}
             role={shareNotice.error ? "alert" : "status"}
+            aria-atomic="true"
           >
-            {shareNotice.message}
+            <span className="share-confirmation-icon" aria-hidden="true">
+              {shareNotice.error ? "!" : "✓"}
+            </span>
+            <span>{shareNotice.message}</span>
           </div>
         )}
       </section>

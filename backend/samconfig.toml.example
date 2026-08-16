@@ -1,0 +1,9 @@
+version = 0.1
+
+[default.global.parameters]
+region = "ap-northeast-2"
+
+[default.deploy.parameters]
+capabilities = "CAPABILITY_NAMED_IAM"
+confirm_changeset = true
+fail_on_empty_changeset = false

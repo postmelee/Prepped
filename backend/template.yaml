@@ -38,6 +38,7 @@ Resources:
   OrderApi:
     Type: AWS::Serverless::HttpApi
     Properties:
+      Name: !Sub prepped-${StageName}-order-api
       CorsConfiguration:
         AllowOrigins: !Ref AllowedOrigins
         AllowHeaders: [content-type, idempotency-key]
@@ -46,6 +47,7 @@ Resources:
   OrderTable:
     Type: AWS::DynamoDB::Table
     Properties:
+      TableName: !Sub prepped-${StageName}-order-api
       BillingMode: PAY_PER_REQUEST
       AttributeDefinitions:
         - AttributeName: pk
@@ -92,11 +94,60 @@ Resources:
         - Key: Stage
           Value: !Ref StageName
 
+  OrderApiFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub prepped-${StageName}-order-api-lambda
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess
+      Policies:
+        - PolicyName: PreppedOrderTableAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: [dynamodb:GetItem, dynamodb:PutItem, dynamodb:TransactWriteItems]
+                Resource: !GetAtt OrderTable.Arn
+
+  HealthLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/prepped-${StageName}-order-api-health
+      RetentionInDays: 7
+
+  CreateDraftLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/prepped-${StageName}-order-api-create-draft
+      RetentionInDays: 7
+
+  GetDraftLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/prepped-${StageName}-order-api-get-draft
+      RetentionInDays: 7
+
+  CompleteDraftLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/prepped-${StageName}-order-api-complete-draft
+      RetentionInDays: 7
+
   HealthFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: .
+      FunctionName: !Sub prepped-${StageName}-order-api-health
       Handler: src/handlers/health.handler
+      Role: !GetAtt OrderApiFunctionRole.Arn
       Events:
         Health:
           Type: HttpApi
@@ -189,12 +240,9 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: .
+      FunctionName: !Sub prepped-${StageName}-order-api-create-draft
       Handler: src/handlers/create-draft.handler
-      Policies: &OrderTableWritePolicy
-        - Statement:
-            Effect: Allow
-            Action: [dynamodb:GetItem, dynamodb:PutItem, dynamodb:TransactWriteItems]
-            Resource: !GetAtt OrderTable.Arn
+      Role: !GetAtt OrderApiFunctionRole.Arn
       Events:
         CreateDraft:
           Type: HttpApi
@@ -211,8 +259,9 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: .
+      FunctionName: !Sub prepped-${StageName}-order-api-get-draft
       Handler: src/handlers/get-draft.handler
-      Policies: *OrderTableWritePolicy
+      Role: !GetAtt OrderApiFunctionRole.Arn
       Events:
         GetDraft:
           Type: HttpApi
@@ -229,8 +278,9 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: .
+      FunctionName: !Sub prepped-${StageName}-order-api-complete-draft
       Handler: src/handlers/complete-draft.handler
-      Policies: *OrderTableWritePolicy
+      Role: !GetAtt OrderApiFunctionRole.Arn
       Events:
         CompleteDraft:
           Type: HttpApi

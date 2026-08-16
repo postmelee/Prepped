@@ -42,10 +42,10 @@ GitHub Issue: [#4](https://github.com/postmelee/Prepped/issues/4)
 | 매장별 설정 화면 | 없음 | 1개 |
 | 설정 화면 매장 상태 | 없음 | 맥도날드 설정 + 서브웨이 준비 중 2개 카드 |
 | 설정 화면 계약 assertion | 0개 | SSR·source 16개 |
-| 애플리케이션 코드 diff | 기준 | 326행 추가, 5행 제거 |
+| 애플리케이션 코드 diff | 기준 | 514행 추가, 9행 제거 |
 | 자동 테스트 | 3개 통과 | 3개 통과, 설정 계약 강화 |
 
-전체 작업 diff는 12개 파일, 920행 추가, 7행 제거다. 작업 문서가 대부분을 차지하며 제품 코드 변경은 화면과 스타일, 매장 편집 동선에 집중돼 있다.
+전체 작업 diff는 12개 파일, 1,117행 추가, 11행 제거다. 작업 문서가 상당 부분을 차지하며 제품 코드 변경은 화면·스타일, 매장 편집 초안과 이탈 보호 동선에 집중돼 있다.
 
 ## 검증 결과
 
@@ -59,20 +59,20 @@ GitHub Issue: [#4](https://github.com/postmelee/Prepped/issues/4)
 | 큰 글자·대비·터치 영역과 현재 탐색 접근성 | OK — 모바일 시각 검수, 48px 행동 버튼과 `aria-current="page"` 확인 |
 | 기존 저장 키와 QR payload 호환성 | OK — `onemeal-menu-v1`과 `mcdonald={...}` serializer 무변경, QR 갱신 확인 |
 | 모바일·키오스크 빌드와 기존 회귀 테스트 | OK — `npm test` 3/3 통과, `/`·`/kiosk` build 성공 |
-| 검증 source를 Sites 새 version으로 저장 | OK — 피드백 반영 version 4 source SHA가 `8d9532d`와 일치 |
-| 공개 게시 안전 게이트 준수 | OK — 기존 `public` 접근을 확인하고 별도 승인 전 version 4 프로덕션 게시 미수행 |
+| 검증 source를 Sites 새 version으로 저장 | OK — 초안 보호 피드백 반영 version 5 source SHA가 `13e1414`와 일치 |
+| 공개 게시 안전 게이트 준수 | OK — 기존 `public` 접근을 확인하고 별도 승인 전 version 5 프로덕션 게시 미수행 |
 
 ### 단계별 검증 결과
 
 - Stage 1: [`task_m010_4_stage1.md`](../working/task_m010_4_stage1.md) — 설정 화면·3열 탐색 구현, build·저장/QR 계약 확인
 - Stage 2: [`task_m010_4_stage2.md`](../working/task_m010_4_stage2.md) — 문서·자동 테스트, 모바일 수정·저장·QR 갱신과 키오스크 브라우저 시나리오 확인
-- Stage 3: [`task_m010_4_stage3.md`](../working/task_m010_4_stage3.md) — 초기 Sites version 3 저장과 공개 게시 안전 게이트 확인 후, PR 피드백 반영 source를 version 4로 갱신
+- Stage 3: [`task_m010_4_stage3.md`](../working/task_m010_4_stage3.md) — 초기 Sites version 3 저장과 공개 게시 안전 게이트 확인 후, 두 차례 PR 피드백 source를 version 4·5로 갱신
 
 ## 잔여 위험과 후속 작업
 
 ### 잔여 위험
 
-- 현재 공개 URL은 version 2라 새 `내 설정 메뉴` 화면이 아직 반영되지 않았다. 저장된 version 4를 게시하려면 `기존 public 접근으로 version 4 게시`라는 명시 승인이 필요하다.
+- 현재 공개 URL은 version 2라 새 `내 설정 메뉴` 화면이 아직 반영되지 않았다. 저장된 version 5를 게시하려면 `기존 public 접근으로 version 5 게시`라는 명시 승인이 필요하다.
 - 메뉴 설정은 브라우저 `localStorage`에만 있어 다른 기기와 동기화되지 않는다.
 - 서브웨이는 실제 메뉴 데이터 없이 준비 중 상태만 제공한다.
 - 실제 휴대폰 QR과 노트북 카메라의 하드웨어 E2E는 사용자 기기에서 확인해야 한다.
@@ -80,7 +80,7 @@ GitHub Issue: [#4](https://github.com/postmelee/Prepped/issues/4)
 
 ### 후속 작업 후보
 
-- 명시적 공개 승인 후 Sites version 4 프로덕션 게시와 두 경로 확인
+- 명시적 공개 승인 후 Sites version 5 프로덕션 게시와 두 경로 확인
 - PR #2 병합 후 PR #4의 base를 `devel`로 변경
 - 매장별 저장 schema 확장과 서브웨이 실데이터/API 연동
 - 기기 간 동기화를 위한 계정·백엔드 저장 설계
@@ -89,4 +89,4 @@ GitHub Issue: [#4](https://github.com/postmelee/Prepped/issues/4)
 ## 작업지시자 승인 요청
 
 - 사용자가 이슈 등록부터 PR 생성까지 모든 Hyper-Waterfall 승인 게이트를 일괄 승인했다. 본 최종 보고와 수용 기준 검증을 승인된 것으로 처리하고 `publish/task4` 게시와 `publish/task1` 대상 Open PR 생성을 진행한다.
-- 공개 Sites version 4 게시만 접근 수준을 명시한 별도 승인이 없어 제외한다.
+- 공개 Sites version 5 게시만 접근 수준을 명시한 별도 승인이 없어 제외한다.

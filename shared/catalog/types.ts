@@ -89,6 +89,10 @@ export type CatalogMenuSummary = Pick<
   "id" | "storeId" | "categoryId" | "name" | "description" | "variant" | "price" | "source" | "isAvailable"
 >;
 
+export type CatalogMenuDetail = MenuItem & {
+  optionGroups: readonly OptionGroup[];
+};
+
 export type ResolveMenusRequest = {
   storeId: StoreKey;
   menuIds: readonly string[];

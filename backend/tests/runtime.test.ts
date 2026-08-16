@@ -7,6 +7,7 @@ test("wires a Lambda runtime to the configured table and frontend origin", async
   const commands: unknown[] = [];
   const handlers = createRuntimeHandlers({
     tableName: "prepped-dev-orders",
+    catalogTableName: "prepped-dev-catalog",
     allowedOrigins: ["https://prepped.chatgpt.site"],
     kioskBaseUrl: "https://prepped.chatgpt.site",
     draftTtlDays: 30,

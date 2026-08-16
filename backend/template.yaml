@@ -1,6 +1,6 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
-Description: Prepped 주문 초안 API
+Description: Prepped 메뉴 카탈로그·주문 초안 API
 
 Parameters:
   StageName:
@@ -29,6 +29,7 @@ Globals:
     Environment:
       Variables:
         ORDER_TABLE_NAME: !Ref OrderTable
+        CATALOG_TABLE_NAME: !Ref CatalogTable
         PREPPED_ALLOWED_ORIGINS: !Join [",", !Ref AllowedOrigins]
         PREPPED_QR_BASE_URL: !Ref QrBaseUrl
         DRAFT_TTL_DAYS: !Ref DraftTtlDays
@@ -67,6 +68,30 @@ Resources:
         - Key: Stage
           Value: !Ref StageName
 
+  CatalogTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: pk
+          AttributeType: S
+        - AttributeName: sk
+          AttributeType: S
+      KeySchema:
+        - AttributeName: pk
+          KeyType: HASH
+        - AttributeName: sk
+          KeyType: RANGE
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      SSESpecification:
+        SSEEnabled: true
+      Tags:
+        - Key: Project
+          Value: Prepped
+        - Key: Stage
+          Value: !Ref StageName
+
   HealthFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -83,6 +108,82 @@ Resources:
       BuildMethod: esbuild
       BuildProperties:
         EntryPoints: [src/handlers/health.ts]
+
+  ListStoresFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .
+      Handler: src/handlers/list-stores.handler
+      Policies: &CatalogTableReadPolicy
+        - Statement:
+            Effect: Allow
+            Action: [dynamodb:GetItem, dynamodb:BatchGetItem, dynamodb:Query]
+            Resource: !GetAtt CatalogTable.Arn
+      Events:
+        ListStores:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref OrderApi
+            Path: /v1/stores
+            Method: GET
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints: [src/handlers/list-stores.ts]
+
+  ListMenusFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .
+      Handler: src/handlers/list-menus.handler
+      Policies: *CatalogTableReadPolicy
+      Events:
+        ListMenus:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref OrderApi
+            Path: /v1/stores/{storeId}/menus
+            Method: GET
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints: [src/handlers/list-menus.ts]
+
+  GetMenuFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .
+      Handler: src/handlers/get-menu.handler
+      Policies: *CatalogTableReadPolicy
+      Events:
+        GetMenu:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref OrderApi
+            Path: /v1/menus/{menuId}
+            Method: GET
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints: [src/handlers/get-menu.ts]
+
+  ResolveMenusFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .
+      Handler: src/handlers/resolve-menus.handler
+      Policies: *CatalogTableReadPolicy
+      Events:
+        ResolveMenus:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref OrderApi
+            Path: /v1/catalog/resolve
+            Method: POST
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints: [src/handlers/resolve-menus.ts]
 
   CreateDraftFunction:
     Type: AWS::Serverless::Function
@@ -149,3 +250,6 @@ Outputs:
   OrderTableName:
     Description: 주문 초안 DynamoDB 테이블 이름
     Value: !Ref OrderTable
+  CatalogTableName:
+    Description: 읽기 전용 메뉴 카탈로그 DynamoDB 테이블 이름
+    Value: !Ref CatalogTable

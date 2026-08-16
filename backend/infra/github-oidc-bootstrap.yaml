@@ -55,7 +55,9 @@ Resources:
                   - dynamodb:TagResource
                   - dynamodb:UntagResource
                   - dynamodb:UpdateTable
-                Resource: !Sub arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/prepped-*-order-api
+                Resource:
+                  - !Sub arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/prepped-*-order-api
+                  - !Sub arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/prepped-*-catalog
               - Sid: ManagePreppedLambdaFunctions
                 Effect: Allow
                 Action:
@@ -97,11 +99,15 @@ Resources:
                   - iam:PutRolePolicy
                   - iam:TagRole
                   - iam:UntagRole
-                Resource: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/prepped-*-order-api-lambda
+                Resource:
+                  - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/prepped-*-order-api-lambda
+                  - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/prepped-*-catalog-api-lambda
               - Sid: CreatePreppedLambdaRole
                 Effect: Allow
                 Action: iam:CreateRole
-                Resource: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/prepped-*-order-api-lambda
+                Resource:
+                  - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/prepped-*-order-api-lambda
+                  - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:role/prepped-*-catalog-api-lambda
               - Sid: ManagePreppedHttpApi
                 Effect: Allow
                 Action:

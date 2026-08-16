@@ -97,7 +97,7 @@ AWS는 GitHub OIDC 역할에 `token.actions.githubusercontent.com:sub` 조건을
 
 ### 계정 부트스트랩 템플릿
 
-[`backend/infra/github-oidc-bootstrap.yaml`](../backend/infra/github-oidc-bootstrap.yaml)은 GitHub OIDC Provider, `PreppedGitHubDeployProduction` 역할, `PreppedCloudFormationExecution` 역할을 별도 CloudFormation 스택으로 만듭니다. GitHub 역할은 `production` Environment subject 두 가지 형식만 허용하고, CloudFormation 실행 역할은 `prepped-*-order-api` 이름 범위의 Lambda·DynamoDB·로그 그룹·HTTP API 및 지정한 아티팩트 버킷으로 권한을 제한합니다.
+[`backend/infra/github-oidc-bootstrap.yaml`](../backend/infra/github-oidc-bootstrap.yaml)은 GitHub OIDC Provider, `PreppedGitHubDeployProduction` 역할, `PreppedCloudFormationExecution` 역할을 별도 CloudFormation 스택으로 만듭니다. GitHub 역할은 `production` Environment subject 두 가지 형식만 허용하고, CloudFormation 실행 역할은 `prepped-*-order-api` Lambda·주문 테이블과 `prepped-*-catalog` 카탈로그 테이블, 로그 그룹·HTTP API 및 지정한 아티팩트 버킷으로 권한을 제한합니다. 배포 역할에는 카탈로그 데이터 쓰기 권한을 주지 않습니다.
 
 계정 부트스트랩 관리자는 IAM Identity Center 임시 자격 증명으로 아래 명령을 실행합니다. 현재 해커톤 계정의 버킷명은 `prepped-prod-sam-artifacts-845081398362`입니다.
 
@@ -120,7 +120,9 @@ aws cloudformation deploy \
 | `PREPPED_STAGE` | `dev`, `prod` | SAM Parameter | 아니오 |
 | `PREPPED_ALLOWED_ORIGINS` | `https://{site}.chatgpt.site,http://localhost:3000` | SAM Parameter | 아니오 |
 | `PREPPED_QR_BASE_URL` | `https://{site}.chatgpt.site` | SAM Parameter | 아니오 |
+| `CATALOG_TABLE_NAME` | `prepped-dev-catalog` | SAM이 Lambda에 주입, CloudFormation Output | 아니오 |
 | `DRAFT_TTL_DAYS` | `30` | SAM Parameter | 아니오 |
+| `PREPPED_API_BASE_URL` | `https://{api-id}.execute-api.ap-northeast-2.amazonaws.com` | Sites Worker 환경 변수 | 아니오 |
 | `LOG_LEVEL` | `info` | SAM Parameter | 아니오 |
 | AWS 계정 ID·역할 ARN | 배포 환경 참조 | GitHub Environment 변수 | 비밀 아님 |
 
@@ -163,9 +165,35 @@ MVP에는 별도 애플리케이션 비밀이 없습니다. 결제·사용자 �
 ### 개발 환경
 
 1. 개발자는 IAM Identity Center로 로그인해 임시 자격 증명을 받습니다.
-2. `develop/backend`에서 테스트, 빌드, `sam validate`를 실행합니다.
-3. 팀 승인 후 `prepped-dev` 스택을 배포하고 `GET /v1/health` 및 주문 생성·조회·완료를 스모크 테스트합니다.
-4. 실제 ChatGPT Sites Origin preflight를 확인합니다.
+2. `develop/backend`에서 프론트·백엔드 테스트, `npm --prefix backend run catalog:check`, dry-run 시드를 실행합니다.
+3. 팀 승인 후 `prepped-dev-order-api` 스택을 배포합니다.
+4. 스택 출력의 `CatalogTableName`을 확인하고 명시적으로 카탈로그를 시드합니다.
+5. 카탈로그 조회·해석과 주문 생성·조회·완료를 스모크 테스트합니다.
+6. 실제 Sites Origin preflight를 확인하고 Sites Worker의 `PREPPED_API_BASE_URL`을 `ApiBaseUrl` 출력으로 설정합니다.
+
+```bash
+npm --prefix backend run catalog:check
+npm --prefix backend run catalog:seed:dry
+
+CATALOG_TABLE_NAME="$(aws cloudformation describe-stacks \
+  --stack-name prepped-dev-order-api \
+  --query "Stacks[0].Outputs[?OutputKey=='CatalogTableName'].OutputValue" \
+  --output text)"
+
+CATALOG_TABLE_NAME="$CATALOG_TABLE_NAME" node backend/scripts/seed-catalog.mjs --apply
+```
+
+`--apply`는 같은 키의 1,022개 projection을 덮어쓰므로 대상 스택·테이블 이름과 `catalog:seed:dry` 결과를 운영자가 확인한 뒤 실행합니다. 수집기는 배포 런타임에서 실행하지 않습니다. 스냅샷을 갱신할 때는 `node backend/scripts/collect-catalog.mjs --live --check` 결과와 공식 출처 diff를 먼저 검토합니다.
+
+카탈로그 스모크 테스트는 다음 경계를 확인합니다.
+
+```bash
+curl "$API_BASE_URL/v1/stores"
+curl "$API_BASE_URL/v1/stores/mcdonald/menus?limit=1"
+curl -X POST "$API_BASE_URL/v1/catalog/resolve" \
+  -H 'content-type: application/json' \
+  -d '{"storeId":"mcdonald","menuIds":["mcdonald-178","missing-menu"]}'
+```
 
 ### 프로덕션 환경
 
@@ -174,7 +202,9 @@ MVP에는 별도 애플리케이션 비밀이 없습니다. 결제·사용자 �
 3. `main` 병합 후 `Deploy Backend to AWS`가 `production` Environment 승인과 OIDC 역할 가정을 기다립니다.
 4. 워크플로가 다시 테스트·SAM 검증을 실행한 뒤 전용 S3 버킷으로 패키징하고 CloudFormation 실행 역할을 통해 `prepped-prod-order-api`를 배포합니다.
 5. 배포 후 `GET /v1/health`, 초안 생성·조회·완료, 멱등 재시도, QR 재사용, CORS를 자동 스모크 테스트합니다. 토큰이나 주문 내용은 로그에 출력하지 않습니다.
-6. CloudWatch 오류·지연과 AWS Budgets 알림을 확인합니다.
+6. 카탈로그 버전을 변경한 배포는 프로덕션 운영자가 `CatalogTableName` 출력과 dry-run을 확인하고 위와 같은 명시적 `--apply` 시드를 실행합니다. 이 단계는 자동 배포 역할에 데이터 쓰기 권한을 주지 않기 위해 자동화하지 않습니다.
+7. 세 매장·대표 메뉴·부분 성공 resolve를 확인한 뒤 Sites Worker의 `PREPPED_API_BASE_URL`이 현재 `ApiBaseUrl`을 가리키는지 검증합니다.
+8. CloudWatch 오류·지연과 AWS Budgets 알림을 확인합니다.
 
 SAM으로 GitHub Actions 배포를 구성하는 기본 흐름은 [AWS SAM GitHub Actions 배포 문서](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/deploying-using-github.html)를 참조합니다. 이 프로젝트는 장기 액세스 키 예시 대신 앞 절의 OIDC 자격 증명을 사용합니다.
 
@@ -196,6 +226,7 @@ SAM으로 GitHub Actions 배포를 구성하는 기본 흐름은 [AWS SAM GitHub
 | CloudFormation 배포 실패 | 스택 이벤트를 확인하고 변경 세트를 취소 또는 실패 변경을 revert |
 | CORS 오류 | 허용 Origin Parameter와 실제 ChatGPT Sites Origin을 비교 후 수정·재배포 |
 | DynamoDB 데이터 오류 | 초안·완료 기록을 무단 삭제하지 않고 문제 토큰·requestId를 확인한 뒤 복구 이슈 생성 |
+| 카탈로그 시드 오류 | `CatalogTableName`과 스냅샷 버전을 다시 확인하고 같은 검증된 시드를 재실행; 임의 삭제·부분 수정 금지 |
 | 비용 급증 | Budgets 알림 확인, 개발 스택 배포 중지, 필요 시 `sam delete` 승인 요청 |
 
 프로덕션의 데이터 삭제, 스택 삭제, 권한 확장, 결제 설정 변경은 별도 명시 승인이 필요합니다.
@@ -212,4 +243,6 @@ SAM으로 GitHub Actions 배포를 구성하는 기본 흐름은 [AWS SAM GitHub
 - [x] CORS Origin이 실제 ChatGPT Sites URL로 제한됨
 - [ ] 10·18·22달러 Budgets 알림 및 이상 비용 알림 설정
 - [ ] `sam validate`, 백엔드 테스트, 개발 스택 스모크 테스트 통과
+- [ ] 카탈로그 수집 검증·dry-run, 대상 `CatalogTableName`, 3개 매장·대표 메뉴·resolve 스모크 확인
+- [ ] Sites Worker `PREPPED_API_BASE_URL`이 현재 API Gateway 출력과 일치
 - [ ] 프로덕션 배포 및 롤백 담당자 확인

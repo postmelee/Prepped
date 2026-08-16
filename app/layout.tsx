@@ -11,15 +11,15 @@ export async function generateMetadata(): Promise<Metadata> {
 
   return {
     title: {
-      default: "한끼패스 · 내 메뉴 QR",
-      template: "%s · 한끼패스",
+      default: "Prepped · 내 메뉴 QR",
+      template: "%s · Prepped",
     },
     description: "자주 먹는 메뉴를 미리 담고 키오스크에서 QR로 한 번에 주문하세요.",
     manifest: "/manifest.webmanifest",
     appleWebApp: {
       capable: true,
       statusBarStyle: "default",
-      title: "한끼패스",
+      title: "Prepped",
     },
     icons: {
       icon: "/icon-192.png",
@@ -28,13 +28,13 @@ export async function generateMetadata(): Promise<Metadata> {
     openGraph: {
       type: "website",
       locale: "ko_KR",
-      title: "한끼패스 · 내 메뉴 QR",
+      title: "Prepped · 내 메뉴 QR",
       description: "자주 먹는 메뉴를 미리 담고 키오스크에서 QR로 주문하세요.",
-      images: [{ url: `${origin}/og.png`, width: 1731, height: 909, alt: "한끼패스 내 메뉴 QR" }],
+      images: [{ url: `${origin}/og.png`, width: 1731, height: 909, alt: "Prepped 내 메뉴 QR" }],
     },
     twitter: {
       card: "summary_large_image",
-      title: "한끼패스 · 내 메뉴 QR",
+      title: "Prepped · 내 메뉴 QR",
       description: "자주 먹는 메뉴를 미리 담고 키오스크에서 QR로 주문하세요.",
       images: [`${origin}/og.png`],
     },

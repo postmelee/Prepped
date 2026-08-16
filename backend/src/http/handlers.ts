@@ -1,8 +1,11 @@
+import { CatalogError } from "../catalog/domain.ts";
+import { CatalogService } from "../catalog/service.ts";
 import { DomainError, DraftService, type CreateDraftInput } from "../domain/drafts.ts";
 
 type HttpEvent = {
   body: string | null;
   pathParameters?: Record<string, string | undefined>;
+  queryStringParameters?: Record<string, string | undefined>;
   headers?: Record<string, string | undefined>;
   requestContext?: { requestId?: string };
 };
@@ -41,6 +44,17 @@ function requestId(event: HttpEvent): string {
 }
 
 function errorResponse(event: HttpEvent, allowedOrigins: string[], error: unknown): HttpResponse {
+  if (error instanceof CatalogError) {
+    const statusCode = error.code === "STORE_NOT_FOUND" || error.code === "MENU_NOT_FOUND" ? 404 : 400;
+    return response(event, allowedOrigins, statusCode, {
+      error: {
+        code: error.code,
+        message: error.message,
+        retryable: false,
+        requestId: requestId(event),
+      },
+    } satisfies ErrorPayload);
+  }
   if (error instanceof DomainError) {
     const statusCode = error.code === "DRAFT_NOT_FOUND" ? 404 : error.code === "IDEMPOTENCY_CONFLICT" ? 409 : 400;
     const payload: ErrorPayload = {
@@ -107,10 +121,78 @@ function tokenFrom(event: HttpEvent): string {
   return token;
 }
 
-export function createHttpHandlers(service: DraftService, allowedOrigins: string[]) {
+function pathValue(event: HttpEvent, name: string): string {
+  const value = event.pathParameters?.[name];
+  if (!value) throw new CatalogError("VALIDATION_ERROR", `${name} 경로 값이 필요합니다.`);
+  return value;
+}
+
+function parseResolveInput(input: unknown): { storeId: string; menuIds: string[] } {
+  if (!input || typeof input !== "object" || Array.isArray(input)) {
+    throw new CatalogError("VALIDATION_ERROR", "매장과 메뉴 ID를 다시 확인해주세요.");
+  }
+  const value = input as Record<string, unknown>;
+  if (typeof value.storeId !== "string" || !Array.isArray(value.menuIds) || !value.menuIds.every((id) => typeof id === "string")) {
+    throw new CatalogError("VALIDATION_ERROR", "매장과 메뉴 ID를 다시 확인해주세요.");
+  }
+  return { storeId: value.storeId, menuIds: value.menuIds as string[] };
+}
+
+function requireCatalogService(service: CatalogService | undefined): CatalogService {
+  if (!service) throw new Error("Catalog service is not configured");
+  return service;
+}
+
+export function createHttpHandlers(
+  service: DraftService,
+  allowedOrigins: string[],
+  catalogService?: CatalogService,
+) {
   return {
     health: async (event: HttpEvent): Promise<HttpResponse> =>
       response(event, allowedOrigins, 200, { data: { status: "ok", service: "prepped-order-api", version: "v1" } }),
+
+    listStores: async (event: HttpEvent): Promise<HttpResponse> => {
+      try {
+        const result = await requireCatalogService(catalogService).listStores();
+        return response(event, allowedOrigins, 200, { data: result });
+      } catch (error) {
+        return errorResponse(event, allowedOrigins, error);
+      }
+    },
+
+    listMenus: async (event: HttpEvent): Promise<HttpResponse> => {
+      try {
+        const rawLimit = event.queryStringParameters?.limit;
+        const result = await requireCatalogService(catalogService).listMenus({
+          storeId: pathValue(event, "storeId"),
+          categoryId: event.queryStringParameters?.category,
+          cursor: event.queryStringParameters?.cursor,
+          limit: rawLimit === undefined ? undefined : Number(rawLimit),
+        });
+        return response(event, allowedOrigins, 200, { data: result });
+      } catch (error) {
+        return errorResponse(event, allowedOrigins, error);
+      }
+    },
+
+    getMenu: async (event: HttpEvent): Promise<HttpResponse> => {
+      try {
+        const result = await requireCatalogService(catalogService).getMenu(pathValue(event, "menuId"));
+        return response(event, allowedOrigins, 200, { data: result });
+      } catch (error) {
+        return errorResponse(event, allowedOrigins, error);
+      }
+    },
+
+    resolveMenus: async (event: HttpEvent): Promise<HttpResponse> => {
+      try {
+        const result = await requireCatalogService(catalogService).resolveMenus(parseResolveInput(parseJson(event)));
+        return response(event, allowedOrigins, 200, { data: result });
+      } catch (error) {
+        return errorResponse(event, allowedOrigins, error);
+      }
+    },
 
     createDraft: async (event: HttpEvent): Promise<HttpResponse> => {
       try {

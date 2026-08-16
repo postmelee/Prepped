@@ -1,0 +1,335 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: Prepped 메뉴 카탈로그·주문 초안 API
+
+Parameters:
+  StageName:
+    Type: String
+    Default: dev
+    AllowedValues: [dev, prod]
+  AllowedOrigins:
+    Type: CommaDelimitedList
+    Description: ChatGPT Sites와 개발 환경의 명시적 허용 Origin 목록
+  QrBaseUrl:
+    Type: String
+    Description: QR에 넣을 키오스크 웹앱 기본 URL
+  DraftTtlDays:
+    Type: Number
+    Default: 30
+    MinValue: 1
+    MaxValue: 365
+
+Globals:
+  Function:
+    Runtime: nodejs22.x
+    Architectures: [arm64]
+    MemorySize: 256
+    Timeout: 10
+    Tracing: Active
+    Environment:
+      Variables:
+        ORDER_TABLE_NAME: !Ref OrderTable
+        CATALOG_TABLE_NAME: !Ref CatalogTable
+        PREPPED_ALLOWED_ORIGINS: !Join [",", !Ref AllowedOrigins]
+        PREPPED_QR_BASE_URL: !Ref QrBaseUrl
+        DRAFT_TTL_DAYS: !Ref DraftTtlDays
+
+Resources:
+  OrderApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      Name: !Sub prepped-${StageName}-order-api
+      CorsConfiguration:
+        AllowOrigins: !Ref AllowedOrigins
+        AllowHeaders: [content-type, idempotency-key]
+        AllowMethods: [GET, POST, OPTIONS]
+
+  OrderTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub prepped-${StageName}-order-api
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: pk
+          AttributeType: S
+        - AttributeName: sk
+          AttributeType: S
+      KeySchema:
+        - AttributeName: pk
+          KeyType: HASH
+        - AttributeName: sk
+          KeyType: RANGE
+      TimeToLiveSpecification:
+        AttributeName: expiresAtEpoch
+        Enabled: true
+      SSESpecification:
+        SSEEnabled: true
+      Tags:
+        - Key: Project
+          Value: Prepped
+        - Key: Stage
+          Value: !Ref StageName
+
+  CatalogTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub prepped-${StageName}-catalog
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: pk
+          AttributeType: S
+        - AttributeName: sk
+          AttributeType: S
+      KeySchema:
+        - AttributeName: pk
+          KeyType: HASH
+        - AttributeName: sk
+          KeyType: RANGE
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      SSESpecification:
+        SSEEnabled: true
+      Tags:
+        - Key: Project
+          Value: Prepped
+        - Key: Stage
+          Value: !Ref StageName
+
+  OrderApiFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub prepped-${StageName}-order-api-lambda
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess
+      Policies:
+        - PolicyName: PreppedOrderTableAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                  - dynamodb:TransactWriteItems
+                Resource: !GetAtt OrderTable.Arn
+
+  CatalogApiFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub prepped-${StageName}-catalog-api-lambda
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess
+      Policies:
+        - PolicyName: PreppedCatalogTableReadAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:BatchGetItem
+                  - dynamodb:Query
+                Resource: !GetAtt CatalogTable.Arn
+
+  HealthLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/prepped-${StageName}-order-api-health
+      RetentionInDays: 7
+
+  CreateDraftLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/prepped-${StageName}-order-api-create-draft
+      RetentionInDays: 7
+
+  GetDraftLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/prepped-${StageName}-order-api-get-draft
+      RetentionInDays: 7
+
+  CompleteDraftLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/prepped-${StageName}-order-api-complete-draft
+      RetentionInDays: 7
+
+  HealthFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .
+      FunctionName: !Sub prepped-${StageName}-order-api-health
+      Handler: src/handlers/health.handler
+      Role: !GetAtt OrderApiFunctionRole.Arn
+      Events:
+        Health:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref OrderApi
+            Path: /v1/health
+            Method: GET
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints: [src/handlers/health.ts]
+
+  ListStoresFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .
+      FunctionName: !Sub prepped-${StageName}-order-api-list-stores
+      Handler: src/handlers/list-stores.handler
+      Role: !GetAtt CatalogApiFunctionRole.Arn
+      Events:
+        ListStores:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref OrderApi
+            Path: /v1/stores
+            Method: GET
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints: [src/handlers/list-stores.ts]
+
+  ListMenusFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .
+      FunctionName: !Sub prepped-${StageName}-order-api-list-menus
+      Handler: src/handlers/list-menus.handler
+      Role: !GetAtt CatalogApiFunctionRole.Arn
+      Events:
+        ListMenus:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref OrderApi
+            Path: /v1/stores/{storeId}/menus
+            Method: GET
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints: [src/handlers/list-menus.ts]
+
+  GetMenuFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .
+      FunctionName: !Sub prepped-${StageName}-order-api-get-menu
+      Handler: src/handlers/get-menu.handler
+      Role: !GetAtt CatalogApiFunctionRole.Arn
+      Events:
+        GetMenu:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref OrderApi
+            Path: /v1/menus/{menuId}
+            Method: GET
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints: [src/handlers/get-menu.ts]
+
+  ResolveMenusFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .
+      FunctionName: !Sub prepped-${StageName}-order-api-resolve-menus
+      Handler: src/handlers/resolve-menus.handler
+      Role: !GetAtt CatalogApiFunctionRole.Arn
+      Events:
+        ResolveMenus:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref OrderApi
+            Path: /v1/catalog/resolve
+            Method: POST
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints: [src/handlers/resolve-menus.ts]
+
+  CreateDraftFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .
+      FunctionName: !Sub prepped-${StageName}-order-api-create-draft
+      Handler: src/handlers/create-draft.handler
+      Role: !GetAtt OrderApiFunctionRole.Arn
+      Events:
+        CreateDraft:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref OrderApi
+            Path: /v1/drafts
+            Method: POST
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints: [src/handlers/create-draft.ts]
+
+  GetDraftFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .
+      FunctionName: !Sub prepped-${StageName}-order-api-get-draft
+      Handler: src/handlers/get-draft.handler
+      Role: !GetAtt OrderApiFunctionRole.Arn
+      Events:
+        GetDraft:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref OrderApi
+            Path: /v1/drafts/{token}
+            Method: GET
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints: [src/handlers/get-draft.ts]
+
+  CompleteDraftFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .
+      FunctionName: !Sub prepped-${StageName}-order-api-complete-draft
+      Handler: src/handlers/complete-draft.handler
+      Role: !GetAtt OrderApiFunctionRole.Arn
+      Events:
+        CompleteDraft:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref OrderApi
+            Path: /v1/drafts/{token}/complete
+            Method: POST
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints: [src/handlers/complete-draft.ts]
+
+Outputs:
+  ApiBaseUrl:
+    Description: API Gateway HTTP API 기본 URL
+    Value: !Sub https://${OrderApi}.execute-api.${AWS::Region}.amazonaws.com
+  OrderTableName:
+    Description: 주문 초안 DynamoDB 테이블 이름
+    Value: !Ref OrderTable
+  CatalogTableName:
+    Description: 읽기 전용 메뉴 카탈로그 DynamoDB 테이블 이름
+    Value: !Ref CatalogTable

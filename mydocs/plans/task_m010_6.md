@@ -15,7 +15,9 @@ GitHub Issue: [#6](https://github.com/postmelee/Prepped/issues/6)
 
 다만 현재 MVP는 브라우저 `localStorage`와 QR payload에 메뉴 ID를 직접 저장한다. 계정, 서버 동기화, 원격 변경, 재발급 없는 실물 카드와 실제 POS·결제 연동은 구현되지 않았다. README는 이 차이를 `현재 MVP`와 `제품 비전`으로 명확히 구분해야 한다.
 
-선행 이슈 #1과 #4의 리브랜딩, 기술 명세, 세 화면 탐색과 매장별 설정 결과를 기준으로 작성한다. 이 결과가 아직 `devel`에 병합되지 않아 Task #6은 검토 가능한 `origin/publish/task4`에서 분기하고 PR도 `publish/task4`를 base로 하는 스택 전략을 사용한다. 선행 PR이 병합되면 base를 `devel`로 전환할 수 있다.
+선행 이슈 #1과 #4의 리브랜딩, 기술 명세, 세 화면 탐색과 매장별 설정 결과를 기준으로 작성한다.
+
+초기 계획은 선행 변경이 아직 `devel`에 병합되지 않았다는 이유로 `origin/publish/task4`에서 분기하고 `publish/task4` 대상 스택 PR을 사용했다. 그러나 내부 task PR은 항상 `devel`을 대상으로 해야 한다는 저장소 규칙을 위반했고, PR #8이 `publish/task4`에 잘못 병합됐다. 작업지시자의 복구 지시에 따라 PR #2를 먼저 `devel`에 병합하고, Task #6 커밋만 최신 `origin/devel` 위로 재배치해 새 `devel` 대상 PR을 만든다. 이 문단과 Stage 4는 승인된 계획 보정 기록이다.
 
 ## 범위
 
@@ -94,6 +96,9 @@ GitHub Issue: [#6](https://github.com/postmelee/Prepped/issues/6)
 - **Stage 3 — 문서 정합성과 GitHub 렌더링 검증**
   - README의 내부 링크, 제목 계층, 표·코드 블록·Mermaid 문법을 점검
   - 코드·`package.json`·기술 명세와 주장 대조, 프로덕션 빌드와 whitespace 검증
+- **Stage 4 — devel 대상 PR 이력 복구**
+  - PR #2의 `devel` 병합을 확인하고 Task #6 커밋만 최신 `origin/devel`에 재배치
+  - build·test·diff를 다시 검증하고 복구 문서와 새 `devel` 대상 PR 준비
 
 ## 검증 계획
 
@@ -112,6 +117,12 @@ GitHub Issue: [#6](https://github.com/postmelee/Prepped/issues/6)
   - `npm test`
   - README 제목 계층·fenced block·Mermaid 구조 수동 검토
   - `git diff --check origin/publish/task4...HEAD`
+- Stage 4
+  - `git merge-base --is-ancestor origin/devel HEAD`
+  - `npm run build`
+  - `npm test`
+  - `git diff --check origin/devel...HEAD`
+  - `git diff --name-status origin/devel...HEAD`
 
 ### 통합 검증
 
@@ -128,7 +139,7 @@ GitHub Issue: [#6](https://github.com/postmelee/Prepped/issues/6)
 
 - **비전과 구현 혼동**: 기능별로 현재 제공 여부를 명시하고 `현재 MVP`와 `제품 비전`을 분리한다.
 - **기술 설명 중복**: README는 입문 요약만 두고 상세 계약은 공식 기술 명세로 연결한다.
-- **스택 PR 의존성**: Task #6은 `publish/task4`를 base로 게시해 README 변경만 리뷰 가능하게 하고, 선행 PR 병합 후 base를 `devel`로 전환한다.
+- **PR 대상 브랜치 복구**: 잘못 생성·병합된 PR #8은 변경할 수 없으므로 Task #6 커밋만 최신 `origin/devel`에 재배치하고 새 `publish/task6 -> devel` PR로 복구한다.
 - **기존 작업 간섭**: 메인 worktree의 미커밋 변경을 건드리지 않고 분리 worktree의 `local/task6`에서만 작업한다.
 - **Markdown 렌더링 차이**: GitHub가 지원하는 표준 Markdown과 Mermaid 문법만 사용하고 fenced block 균형을 정적 확인한다.
 
@@ -137,7 +148,7 @@ GitHub Issue: [#6](https://github.com/postmelee/Prepped/issues/6)
 - 사용자 중심 우선 정보 구조와 현재 MVP·제품 비전 분리 원칙
 - 루트 `README.md`를 공식 제품·개발 입문 문서로 유지하는 위치 판단
 - 애플리케이션 코드와 공식 기술 명세를 변경하지 않는 범위
-- `origin/publish/task4` 기반 분기와 `publish/task4` 대상 스택 PR 전략
-- 3단계 구성과 단계별 검증 계획
+- 최신 `origin/devel` 기반 분기와 `devel` 대상 PR 복구 전략
+- Stage 4를 포함한 4단계 구성과 단계별 검증 계획
 
-작업지시자가 같은 스레드에서 이슈 생성부터 PR 생성까지 모든 승인 게이트를 일괄 승인했으므로 위 항목을 승인된 것으로 처리하고 구현계획서 작성과 Stage 1로 진행한다.
+작업지시자가 같은 스레드에서 이슈 생성부터 PR 생성까지 모든 승인 게이트를 일괄 승인했고, 잘못된 PR 대상 브랜치를 올바른 순서로 복구하도록 추가 지시했다. 따라서 Stage 4 계획 보정과 새 `devel` 대상 PR 생성을 승인된 것으로 처리한다.

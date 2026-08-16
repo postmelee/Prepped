@@ -11,6 +11,7 @@ GitHub Issue: [#6](https://github.com/postmelee/Prepped/issues/6)
 | 1 | 사용자 중심 제품 소개와 현재 MVP 경계 재작성 | `README.md`, Stage 1 보고서 | 기획서 대비 핵심 메시지·사용자 가치·비전 구분, whitespace |
 | 2 | 개발·아키텍처·운영 안내 구성 | `README.md`, Stage 2 보고서 | 코드·패키지·기술 명세 정합성, 내부 링크, Mermaid 구조 |
 | 3 | 문서 정합성과 GitHub 렌더링 검증 | `README.md` 최종 보정, Stage 3 보고서 | build, test, Markdown 구조, 스택 diff |
+| 4 | devel 대상 PR 이력 복구 | 계획·보고서 보정, Stage 4 보고서 | devel ancestry, build, test, direct diff |
 
 ## 문서 위치 확인
 
@@ -144,6 +145,46 @@ git status --short
 Task #6 Stage 3: README 정합성과 렌더링 검증
 ```
 
+## Stage 4 — devel 대상 PR 이력 복구
+
+### 산출물
+
+수정:
+
+- `mydocs/plans/task_m010_6.md`
+- `mydocs/plans/task_m010_6_impl.md`
+- `mydocs/report/task_m010_6_report.md`
+- `mydocs/orders/20260816.md`
+
+신규:
+
+- `mydocs/working/task_m010_6_stage4.md`
+
+### 변경 내용
+
+- PR #2가 `publish/task1 -> devel`로 실제 병합됐는지 확인한다.
+- 원래 Task #6 분기점 이후의 6개 커밋만 최신 `origin/devel` 위로 재배치한다.
+- 잘못 병합된 PR #8과 새 복구 PR의 관계를 계획·단계·최종 보고서에 기록한다.
+- 최신 `devel` 기준으로 build, test, Markdown 구조와 diff 범위를 다시 검증한다.
+- `publish/task6`을 `--force-with-lease`로 복구 이력에 맞춰 갱신하고 새 `devel` 대상 Open PR을 만든다.
+
+### 검증
+
+```bash
+git merge-base --is-ancestor origin/devel HEAD
+npm run build
+npm test
+node --input-type=module -e "README fenced block·Mermaid·상대 링크·제목 계층 검사"
+git diff --check origin/devel...HEAD
+git diff --name-status origin/devel...HEAD
+```
+
+### 커밋
+
+```text
+Task #6 Stage 4: devel 대상 PR 이력 복구
+```
+
 ## 통합 수용 기준
 
 - README 첫 부분만 읽어도 대상 사용자, 문제, 해결 방식과 핵심 가치가 이해된다.
@@ -154,17 +195,17 @@ Task #6 Stage 3: README 정합성과 렌더링 검증
 - 기술 스택, Node.js 요구 버전, 실행·검증 명령이 `package.json`과 일치한다.
 - 내부 링크 대상, fenced block, 제목 계층과 Mermaid 구조가 유효하다.
 - `npm run build`, `npm test`, `git diff --check`가 성공한다.
-- PR diff가 `origin/publish/task4` 기준 Task #6 산출물만 포함한다.
+- PR diff가 최신 `origin/devel` 기준 Task #6 산출물만 포함한다.
 
 ## 브랜치와 PR 전략
 
 - 작업 브랜치: `local/task6`
-- 분기 기준: `origin/publish/task4`
+- 복구 후 분기 기준: 최신 `origin/devel`
 - 원격 게시 브랜치: `publish/task6`
-- PR base: `publish/task4`
-- PR #5가 `devel`에 병합되면 Task #6 PR base를 `devel`로 전환할 수 있다.
+- 새 PR base: `devel`
+- 기존 PR #8은 `publish/task4`에 잘못 병합된 역사 기록으로 유지하며, 새 PR이 실제 통합 경로다.
 - 메인 worktree의 `local/task4` 미커밋 변경과 로컬 전용 커밋은 Task #6에 포함하지 않는다.
 
 ## 승인 요청 사항
 
-- 사용자의 이슈 생성부터 PR 생성까지 일괄 승인에 따라 수행계획서, 3단계 구성, 산출물, 검증 명령, 커밋 메시지와 스택 PR 전략을 승인된 것으로 처리하고 Stage 1을 시작한다.
+- 사용자의 일괄 승인과 후속 복구 지시에 따라 4단계 구성, `origin/devel` 재배치, `publish/task6 -> devel` 새 PR과 복구 후 정리를 승인된 것으로 처리한다.

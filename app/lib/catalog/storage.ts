@@ -28,6 +28,11 @@ const LEGACY_ID_MAP: Readonly<Record<number, string>> = {
   302: "mcdonald-28",
 };
 
+export function migrateLegacyMenuId(menuId: string): string {
+  if (!/^\d+$/.test(menuId)) return menuId;
+  return LEGACY_ID_MAP[Number(menuId)] ?? menuId;
+}
+
 export const LEGACY_MENU_LABELS: Readonly<Record<string, { name: string; price: number }>> = {
   "301": { name: "코카콜라 (이전 설정)", price: 2600 },
   "303": { name: "바닐라 쉐이크 (이전 설정)", price: 3500 },
@@ -85,7 +90,7 @@ function migrateLegacy(raw: string): MenuSettings | undefined {
   if (!Array.isArray(record.savedIds)) return undefined;
   const menuIds = [...new Set(record.savedIds.flatMap((legacyId) => {
     if (!Number.isInteger(legacyId)) return [];
-    return [LEGACY_ID_MAP[legacyId as number] ?? String(legacyId)];
+    return [migrateLegacyMenuId(String(legacyId))];
   }))].slice(0, 20);
   const stores = emptyStores();
   stores.mcdonald = {

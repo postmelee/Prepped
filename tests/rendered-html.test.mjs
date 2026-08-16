@@ -46,20 +46,25 @@ test("server-renders the Prepped kiosk route", async () => {
 
   const html = await response.text();
   assert.match(html, /<title>키오스크 QR 스캐너 · Prepped<\/title>/i);
-  assert.match(html, /휴대폰 QR을/);
-  assert.match(html, /카메라 켜기/);
-  assert.match(html, /샘플 QR로 미리 보기/);
+  assert.match(html, /이 키오스크의/);
+  assert.match(html, /매장을 골라주세요/);
+  assert.match(html, /맥도날드/);
+  assert.match(html, /써브웨이/);
+  assert.match(html, /스타벅스/);
   assert.doesNotMatch(html, /한끼패스|Your site is taking shape/);
 });
 
 test("keeps the PWA and QR contracts explicit", async () => {
-  const [manifestSource, mobileSource, storageSource, catalogSource, settingsSource, kioskSource] = await Promise.all([
+  const [manifestSource, mobileSource, storageSource, catalogSource, settingsSource, kioskSource, kioskResolveSource, kioskSelectorSource, kioskResultSource] = await Promise.all([
     readFile(new URL("../public/manifest.webmanifest", import.meta.url), "utf8"),
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/lib/catalog/storage.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/components/menu-catalog.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/components/store-settings.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/kiosk/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/lib/catalog/resolve.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/components/kiosk-store-selector.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/components/kiosk-menu-result.tsx", import.meta.url), "utf8"),
   ]);
 
   const manifest = JSON.parse(manifestSource);
@@ -95,7 +100,15 @@ test("keeps the PWA and QR contracts explicit", async () => {
   assert.match(mobileSource, /onClick=\{discardDraftAndLeave\} autoFocus/);
   assert.match(mobileSource, /resolveCatalogMenus\(activeStoreId, selectedIds\)/);
   assert.match(mobileSource, /QR에는 메뉴 ID와 기본 옵션이 저장돼요/);
-  assert.match(kioskSource, /\(\[a-zA-Z0-9_-\]\+\)=\\\{\(\[\^}]\*\)\\\}/);
+  assert.match(kioskResolveSource, /selectStoreMenuIds\(raw, storeId\)/);
+  assert.match(kioskResolveSource, /resolveCatalogMenus\(storeId, requestedMenuIds\)/);
+  assert.match(kioskSelectorSource, /맥도날드/);
+  assert.match(kioskSelectorSource, /써브웨이/);
+  assert.match(kioskSelectorSource, /스타벅스/);
+  assert.match(kioskResultSource, /unknownMenuIds/);
+  assert.match(kioskResultSource, /optionGroups/);
   assert.match(kioskSource, /navigator\.mediaDevices\.getUserMedia/);
+  assert.match(kioskSource, /QR 문자열을 직접 입력할 수도 있어요/);
+  assert.match(kioskSource, /다중 매장 샘플 QR로 미리 보기/);
   assert.match(kioskSource, /결제하기/);
 });

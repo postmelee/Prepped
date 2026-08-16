@@ -13,6 +13,7 @@
     "test": "npm run build && node --test tests/rendered-html.test.mjs",
     "test:contracts": "node --test tests/catalog-contract.test.mjs tests/catalog-api.test.mjs tests/qr-payload.test.mjs",
     "test:mobile": "node --test tests/mobile-menu-flow.test.mjs tests/qr-payload.test.mjs",
+    "test:kiosk": "node --test tests/kiosk-qr-flow.test.mjs tests/catalog-api.test.mjs tests/qr-payload.test.mjs",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "db:generate": "drizzle-kit generate"
   },

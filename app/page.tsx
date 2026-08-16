@@ -1,0 +1,312 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import QRCode from "qrcode";
+
+type MenuItem = {
+  id: number;
+  name: string;
+  price: number;
+  category: "burger" | "side" | "drink";
+  icon: string;
+  tone: string;
+};
+
+const MENU_ITEMS: MenuItem[] = [
+  { id: 101, name: "빅맥", price: 6300, category: "burger", icon: "🍔", tone: "tomato" },
+  { id: 102, name: "불고기 버거", price: 3500, category: "burger", icon: "🍔", tone: "amber" },
+  { id: 103, name: "1955 버거", price: 7200, category: "burger", icon: "🍔", tone: "brown" },
+  { id: 104, name: "맥스파이시 상하이 버거", price: 6500, category: "burger", icon: "🍔", tone: "red" },
+  { id: 201, name: "후렌치 후라이", price: 3000, category: "side", icon: "🍟", tone: "yellow" },
+  { id: 202, name: "맥너겟 6조각", price: 4600, category: "side", icon: "◌", tone: "orange" },
+  { id: 203, name: "해쉬 브라운", price: 1800, category: "side", icon: "▰", tone: "gold" },
+  { id: 301, name: "코카콜라", price: 2600, category: "drink", icon: "🥤", tone: "cola" },
+  { id: 302, name: "아메리카노", price: 3300, category: "drink", icon: "☕", tone: "coffee" },
+  { id: 303, name: "바닐라 쉐이크", price: 3500, category: "drink", icon: "🥛", tone: "cream" },
+];
+
+const CATEGORIES = [
+  { id: "burger", name: "버거", icon: "🍔" },
+  { id: "side", name: "사이드", icon: "🍟" },
+  { id: "drink", name: "음료", icon: "🥤" },
+] as const;
+
+const DEFAULT_IDS = [101, 201, 301];
+const STORAGE_KEY = "onemeal-menu-v1";
+
+function formatPrice(price: number) {
+  return `${price.toLocaleString("ko-KR")}원`;
+}
+
+function getItem(id: number) {
+  return MENU_ITEMS.find((item) => item.id === id);
+}
+
+export default function Home() {
+  const [tab, setTab] = useState<"qr" | "create">("qr");
+  const [step, setStep] = useState<"store" | "category" | "menu">("store");
+  const [category, setCategory] = useState<MenuItem["category"]>("burger");
+  const [selectedIds, setSelectedIds] = useState<number[]>(DEFAULT_IDS);
+  const [savedIds, setSavedIds] = useState<number[]>(DEFAULT_IDS);
+  const [storeEnabled, setStoreEnabled] = useState(true);
+  const [qrUrl, setQrUrl] = useState("");
+  const [cartOpen, setCartOpen] = useState(false);
+  const [savedNotice, setSavedNotice] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw) as { savedIds?: number[]; storeEnabled?: boolean };
+        if (Array.isArray(parsed.savedIds)) {
+          setSavedIds(parsed.savedIds);
+          setSelectedIds(parsed.savedIds);
+        }
+        if (typeof parsed.storeEnabled === "boolean") setStoreEnabled(parsed.storeEnabled);
+      }
+    } catch {
+      // Keep the useful demo combination if local storage is unavailable.
+    } finally {
+      setHydrated(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ savedIds, storeEnabled }));
+  }, [savedIds, storeEnabled, hydrated]);
+
+  const qrPayload = useMemo(
+    () => (storeEnabled && savedIds.length ? `mcdonald={${savedIds.join(",")}}` : "menu={}"),
+    [savedIds, storeEnabled],
+  );
+
+  useEffect(() => {
+    let active = true;
+    QRCode.toDataURL(qrPayload, {
+      width: 720,
+      margin: 2,
+      errorCorrectionLevel: "M",
+      color: { dark: "#111111", light: "#FFFFFF" },
+    }).then((url) => active && setQrUrl(url));
+    return () => {
+      active = false;
+    };
+  }, [qrPayload]);
+
+  useEffect(() => {
+    if (!("serviceWorker" in navigator)) return;
+    navigator.serviceWorker.register("/sw.js").catch(() => undefined);
+  }, []);
+
+  const selectedItems = selectedIds.map(getItem).filter((item): item is MenuItem => Boolean(item));
+  const savedItems = savedIds.map(getItem).filter((item): item is MenuItem => Boolean(item));
+  const total = selectedItems.reduce((sum, item) => sum + item.price, 0);
+  const menuForCategory = MENU_ITEMS.filter((item) => item.category === category);
+
+  function startCreate() {
+    setSelectedIds(savedIds);
+    setStep("store");
+    setTab("create");
+  }
+
+  function toggleMenu(id: number) {
+    setSelectedIds((current) =>
+      current.includes(id) ? current.filter((menuId) => menuId !== id) : [...current, id],
+    );
+  }
+
+  function saveMenu() {
+    setSavedIds(selectedIds);
+    setStoreEnabled(true);
+    setCartOpen(false);
+    setSavedNotice(true);
+    setTab("qr");
+    window.setTimeout(() => setSavedNotice(false), 2600);
+  }
+
+  return (
+    <main className="mobile-shell">
+      <section className="phone-app" aria-label="한끼패스 메뉴 QR 앱">
+        {tab === "qr" ? (
+          <div className="screen qr-screen">
+            <header className="screen-header">
+              <span className="eyebrow">한끼패스</span>
+              <h1>내 메뉴 QR</h1>
+            </header>
+
+            <div className="qr-card">
+              <div className="qr-frame" aria-label={`QR 데이터: ${qrPayload}`}>
+                {qrUrl ? <img src={qrUrl} alt="내 메뉴가 저장된 QR 코드" /> : <div className="qr-loading" />}
+                <span className="qr-corner corner-one" />
+                <span className="qr-corner corner-two" />
+                <span className="qr-corner corner-three" />
+                <span className="qr-corner corner-four" />
+              </div>
+              <strong>키오스크 카메라에 보여주세요</strong>
+              <p>{storeEnabled ? `${savedItems.length}개 메뉴가 담겨 있어요` : "QR에 포함된 매장이 없어요"}</p>
+            </div>
+
+            <section className="qr-info" aria-labelledby="qr-info-title">
+              <div className="section-title-row">
+                <h2 id="qr-info-title">QR 정보</h2>
+                <button className="text-button" type="button" onClick={startCreate}>메뉴 바꾸기</button>
+              </div>
+              <div className={`store-toggle ${storeEnabled ? "enabled" : ""}`}>
+                <div className="brand-mark mcdonald-mark" aria-hidden="true">M</div>
+                <button
+                  type="button"
+                  className="store-copy"
+                  onClick={() => setStoreEnabled((enabled) => !enabled)}
+                  aria-label={`맥도날드 QR 정보 ${storeEnabled ? "끄기" : "켜기"}`}
+                >
+                  <strong>맥도날드</strong>
+                  <span>{savedItems.map((item) => item.name).join(" · ") || "메뉴 없음"}</span>
+                </button>
+                <button
+                  className="toggle"
+                  role="switch"
+                  aria-checked={storeEnabled}
+                  aria-label="맥도날드 QR 포함"
+                  onClick={() => setStoreEnabled((enabled) => !enabled)}
+                  type="button"
+                >
+                  <span />
+                </button>
+              </div>
+            </section>
+          </div>
+        ) : (
+          <div className="screen create-screen">
+            <header className="create-header">
+              <div>
+                <span className="eyebrow">자주 먹는 메뉴</span>
+                <h1>
+                  {step === "store" && "매장을 골라주세요"}
+                  {step === "category" && "종류를 골라주세요"}
+                  {step === "menu" && `${CATEGORIES.find((item) => item.id === category)?.name} 메뉴`}
+                </h1>
+              </div>
+              {step !== "store" && (
+                <button
+                  className="back-button"
+                  type="button"
+                  aria-label="이전 단계"
+                  onClick={() => setStep(step === "menu" ? "category" : "store")}
+                >
+                  ‹
+                </button>
+              )}
+            </header>
+
+            <div className="progress-track" aria-label="메뉴 선택 단계">
+              <span className="active" />
+              <span className={step !== "store" ? "active" : ""} />
+              <span className={step === "menu" ? "active" : ""} />
+            </div>
+
+            {step === "store" && (
+              <div className="choice-list store-choice-list">
+                <button className="store-choice" type="button" onClick={() => setStep("category")}>
+                  <span className="brand-mark mcdonald-mark">M</span>
+                  <span><strong>맥도날드</strong><small>{savedIds.length ? `${savedIds.length}개 저장됨` : "처음 만들기"}</small></span>
+                  <span className="choice-arrow">›</span>
+                </button>
+                <button className="store-choice unavailable" type="button" disabled>
+                  <span className="brand-mark subway-mark">S</span>
+                  <span><strong>서브웨이</strong><small>준비 중</small></span>
+                </button>
+              </div>
+            )}
+
+            {step === "category" && (
+              <div className="category-grid">
+                {CATEGORIES.map((item) => (
+                  <button
+                    className="category-choice"
+                    type="button"
+                    key={item.id}
+                    onClick={() => {
+                      setCategory(item.id);
+                      setStep("menu");
+                    }}
+                  >
+                    <span>{item.icon}</span>
+                    <strong>{item.name}</strong>
+                    <small>{MENU_ITEMS.filter((menu) => menu.category === item.id).length}개 메뉴</small>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {step === "menu" && (
+              <div className="menu-grid">
+                {menuForCategory.map((item) => {
+                  const selected = selectedIds.includes(item.id);
+                  return (
+                    <button
+                      type="button"
+                      className={`menu-card ${selected ? "selected" : ""}`}
+                      key={item.id}
+                      onClick={() => toggleMenu(item.id)}
+                      aria-pressed={selected}
+                    >
+                      <span className={`menu-visual ${item.tone}`}>{item.icon}</span>
+                      <span className="menu-text"><strong>{item.name}</strong><small>{formatPrice(item.price)}</small></span>
+                      <span className="check-mark" aria-hidden="true">✓</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {selectedIds.length > 0 && (
+              <button className="selected-bar" type="button" onClick={() => setCartOpen(true)}>
+                <span className="count-dot">{selectedIds.length}</span>
+                <strong>선택 메뉴</strong>
+                <span>{formatPrice(total)} · 목록 보기</span>
+              </button>
+            )}
+          </div>
+        )}
+
+        <nav className="bottom-nav" aria-label="주요 메뉴">
+          <button className={tab === "qr" ? "active" : ""} type="button" onClick={() => setTab("qr")}>
+            <span className="nav-icon qr-icon"><i /><i /><i /></span>
+            <strong>내 QR</strong>
+          </button>
+          <button className={tab === "create" ? "active" : ""} type="button" onClick={startCreate}>
+            <span className="nav-icon plus-icon">＋</span>
+            <strong>메뉴 만들기</strong>
+          </button>
+        </nav>
+
+        {cartOpen && (
+          <div className="sheet-backdrop" role="presentation" onMouseDown={() => setCartOpen(false)}>
+            <section className="bottom-sheet" role="dialog" aria-modal="true" aria-labelledby="selected-title" onMouseDown={(event) => event.stopPropagation()}>
+              <div className="sheet-handle" />
+              <div className="sheet-heading">
+                <div><span className="eyebrow">맥도날드</span><h2 id="selected-title">선택한 메뉴</h2></div>
+                <button type="button" aria-label="닫기" onClick={() => setCartOpen(false)}>×</button>
+              </div>
+              <div className="cart-items">
+                {selectedItems.map((item) => (
+                  <div className="cart-item" key={item.id}>
+                    <span className={`cart-thumb ${item.tone}`}>{item.icon}</span>
+                    <span><strong>{item.name}</strong><small>{formatPrice(item.price)}</small></span>
+                    <button type="button" aria-label={`${item.name} 빼기`} onClick={() => toggleMenu(item.id)}>빼기</button>
+                  </div>
+                ))}
+              </div>
+              <div className="sheet-total"><span>합계</span><strong>{formatPrice(total)}</strong></div>
+              <button className="primary-button" type="button" onClick={saveMenu}>이 메뉴로 저장하기</button>
+            </section>
+          </div>
+        )}
+
+        {savedNotice && <div className="toast" role="status">QR이 새 메뉴로 바뀌었어요</div>}
+      </section>
+    </main>
+  );
+}

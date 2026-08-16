@@ -1,0 +1,16 @@
+{
+  "name": "한끼패스 · 내 메뉴 QR",
+  "short_name": "한끼패스",
+  "description": "자주 먹는 메뉴를 미리 담고 키오스크에서 QR로 주문하세요.",
+  "lang": "ko-KR",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f7f4ee",
+  "theme_color": "#f7f4ee",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

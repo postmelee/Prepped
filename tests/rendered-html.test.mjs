@@ -34,6 +34,8 @@ test("server-renders the Prepped mobile QR route", async () => {
   assert.match(html, /내 메뉴 QR/);
   assert.match(html, /mcdonald=\{101,201,301\}/);
   assert.match(html, /메뉴 만들기/);
+  assert.match(html, /내 설정/);
+  assert.match(html, /aria-current="page"/);
   assert.doesNotMatch(html, /한끼패스|Your site is taking shape|react-loading-skeleton/);
 });
 
@@ -72,6 +74,12 @@ test("keeps the PWA and QR contracts explicit", async () => {
 
   assert.match(mobileSource, /onemeal-menu-v1/);
   assert.match(mobileSource, /mcdonald=\{\$\{savedIds\.join\(","\)\}\}/);
+  assert.match(mobileSource, /"qr" \| "create" \| "settings"/);
+  assert.match(mobileSource, /<h1>내 설정 메뉴<\/h1>/);
+  assert.match(mobileSource, /맥도날드에 저장한 메뉴/);
+  assert.match(mobileSource, /QR 사용 중/);
+  assert.match(mobileSource, /설정 없음/);
+  assert.match(mobileSource, /aria-current=\{tab === "settings" \? "page" : undefined\}/);
   assert.match(kioskSource, /\(\[a-zA-Z0-9_-\]\+\)=\\\{\(\[\^}]\*\)\\\}/);
   assert.match(kioskSource, /navigator\.mediaDevices\.getUserMedia/);
   assert.match(kioskSource, /결제하기/);

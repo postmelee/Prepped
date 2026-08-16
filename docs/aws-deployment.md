@@ -95,6 +95,22 @@ GitHub Environment를 OIDC subject 조건에 사용하면 `sub` 형식이 Enviro
 
 AWS는 GitHub OIDC 역할에 `token.actions.githubusercontent.com:sub` 조건을 두고 특정 저장소·브랜치로 범위를 제한할 것을 권장합니다. [AWS GitHub OIDC 역할 구성](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_create_for-idp_oidc.html)과 [GitHub의 AWS OIDC 안내](https://docs.github.com/en/actions/how-tos/secure-your-work/security-harden-deployments/oidc-in-aws)를 참조합니다.
 
+### 계정 부트스트랩 템플릿
+
+[`backend/infra/github-oidc-bootstrap.yaml`](../backend/infra/github-oidc-bootstrap.yaml)은 GitHub OIDC Provider, `PreppedGitHubDeployProduction` 역할, `PreppedCloudFormationExecution` 역할을 별도 CloudFormation 스택으로 만듭니다. GitHub 역할은 `production` Environment subject 두 가지 형식만 허용하고, CloudFormation 실행 역할은 `prepped-*-order-api` 이름 범위의 Lambda·DynamoDB·로그 그룹·HTTP API 및 지정한 아티팩트 버킷으로 권한을 제한합니다.
+
+계정 부트스트랩 관리자는 IAM Identity Center 임시 자격 증명으로 아래 명령을 실행합니다. 현재 해커톤 계정의 버킷명은 `prepped-prod-sam-artifacts-845081398362`입니다.
+
+```bash
+aws cloudformation deploy \
+  --region ap-northeast-2 \
+  --stack-name prepped-github-oidc-bootstrap \
+  --template-file backend/infra/github-oidc-bootstrap.yaml \
+  --capabilities CAPABILITY_NAMED_IAM
+```
+
+생성 후 CloudFormation 출력의 역할 ARN을 GitHub Environment 변수에 등록합니다. 사용자 장기 액세스 키를 GitHub에 등록하는 방식은 사용하지 않습니다.
+
 ## AWS 리소스와 환경 변수
 
 기본 리전은 사용자와 가까운 `ap-northeast-2`(서울)로 통일합니다. 리전 변경은 스택 이름·CORS Origin·API URL과 함께 검토합니다.
@@ -127,6 +143,17 @@ MVP에는 별도 애플리케이션 비밀이 없습니다. 결제·사용자 �
 | `SMOKE_TEST_ORIGIN` | `https://{site}.chatgpt.site` | 배포 후 CORS 스모크 테스트에 사용할 단일 Origin |
 
 `SAM_ARTIFACT_BUCKET`은 부트스트랩 관리자가 미리 만들고, Block Public Access·기본 암호화·필요한 수명 주기 정책을 적용합니다. GitHub 배포 역할에는 이 버킷과 `prepped-prod-order-api` 스택, 지정한 CloudFormation 실행 역할에 필요한 최소 권한만 부여합니다. CloudFormation 실행 역할은 이 SAM 템플릿이 만드는 Lambda, API Gateway, DynamoDB, CloudWatch Logs 및 Lambda 실행 역할만 생성·변경하도록 시작하고, 첫 배포 뒤 CloudTrail과 IAM Access Analyzer를 근거로 더 축소합니다.
+
+현재 AWS 계정에서 확인된 고정 값은 아래와 같습니다. Sites URL은 배포 후 실제 값을 넣기 전까지 확정하지 않습니다.
+
+| 변수 | 현재 값 |
+|---|---|
+| `AWS_REGION` | `ap-northeast-2` |
+| `AWS_ACCOUNT_ID` | `845081398362` |
+| `AWS_DEPLOY_ROLE_ARN` | `arn:aws:iam::845081398362:role/PreppedGitHubDeployProduction` |
+| `CLOUDFORMATION_EXECUTION_ROLE_ARN` | `arn:aws:iam::845081398362:role/PreppedCloudFormationExecution` |
+| `SAM_ARTIFACT_BUCKET` | `prepped-prod-sam-artifacts-845081398362` |
+| `DRAFT_TTL_DAYS` | `30` |
 
 ## 배포 흐름
 

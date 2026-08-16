@@ -80,6 +80,8 @@ test("returns the persisted result when a concurrent completion wins the same id
     }
 
     async findCompletion(_token: string, _idempotencyKey: string): Promise<CompletedOrder | undefined> {
+      void _token;
+      void _idempotencyKey;
       return this.completion ? structuredClone(this.completion) : undefined;
     }
 
@@ -89,6 +91,9 @@ test("returns the persisted result when a concurrent completion wins the same id
       order: CompletedOrder,
       _expiresAt: string,
     ): Promise<void> {
+      void _token;
+      void _idempotencyKey;
+      void _expiresAt;
       this.completion = {
         ...structuredClone(order),
         id: "ord_winner",

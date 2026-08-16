@@ -4,7 +4,7 @@ import type {
   Category,
   Store,
   StoreKey,
-} from "../../../shared/catalog/types.ts";
+} from "./contract.ts";
 
 export type CatalogErrorCode = "VALIDATION_ERROR" | "STORE_NOT_FOUND" | "MENU_NOT_FOUND";
 

@@ -10,7 +10,7 @@ import {
   type Category,
   type Store,
   type StoreKey,
-} from "../../../shared/catalog/types.ts";
+} from "./contract.ts";
 import { CatalogError, type CatalogManifest } from "./domain.ts";
 import type { CatalogRepository, CatalogRepositoryPage, ListCatalogMenusInput } from "./repository.ts";
 

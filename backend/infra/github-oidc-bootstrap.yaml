@@ -52,9 +52,11 @@ Resources:
                   - dynamodb:CreateTable
                   - dynamodb:DeleteTable
                   - dynamodb:DescribeTable
+                  - dynamodb:DescribeTimeToLive
                   - dynamodb:TagResource
                   - dynamodb:UntagResource
                   - dynamodb:UpdateTable
+                  - dynamodb:UpdateTimeToLive
                 Resource:
                   - !Sub arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/prepped-*-order-api
                   - !Sub arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/prepped-*-catalog
@@ -115,10 +117,17 @@ Resources:
                   - apigateway:GET
                   - apigateway:PATCH
                   - apigateway:POST
+                  - apigateway:TagResource
+                  - apigateway:UntagResource
                   - apigateway:PUT
                 Resource:
                   - !Sub arn:${AWS::Partition}:apigateway:${AWS::Region}::/apis
                   - !Sub arn:${AWS::Partition}:apigateway:${AWS::Region}::/apis/*
+                  - !Sub arn:${AWS::Partition}:apigateway:${AWS::Region}::/tags/*
+              - Sid: UseServerlessTransform
+                Effect: Allow
+                Action: cloudformation:CreateChangeSet
+                Resource: !Sub arn:${AWS::Partition}:cloudformation:${AWS::Region}:aws:transform/Serverless-2016-10-31
               - Sid: ReadDeploymentArtifacts
                 Effect: Allow
                 Action:

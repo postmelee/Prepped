@@ -12,6 +12,7 @@ GitHub Issue: [#3](https://github.com/postmelee/Prepped/issues/3)
 | 2 | AWS 백엔드 스캐폴드 구성 | `backend/` | `backend` 빌드·테스트·SAM 검증 |
 | 3 | CI/CD 배포 경로 구성 | GitHub Actions, 스모크 테스트, 배포 설정 문서 | 워크플로·SAM·스모크 스크립트 정적 검증 |
 | 4 | AWS 계정 실배포 | AWS `dev`/`production` 환경 및 배포 증적 | OIDC 역할 가정, SAM 배포, 원격 스모크 테스트 |
+| 4.3 | 카탈로그 통합 배포 복구 | SAM 패키징 경계·실행 역할 권한·최신 스택 | `sam build`, GitHub 운영 배포, 카탈로그 시드·API/CORS 스모크 테스트 |
 
 ## 문서 위치 확인
 
@@ -136,6 +137,20 @@ Task #3 Stage 3: GitHub OIDC 배포 경로 구성
 - `main` 병합 뒤 GitHub OIDC 운영 배포와 원격 스모크 테스트를 실행한다.
 - GitHub Actions 실행 로그, CloudFormation 스택 출력, 비용 알림을 확인한다.
 
+### Stage 4.3 — 카탈로그 통합 배포 복구
+
+#### Stage 4.3.1 — 패키징·실행 역할 복구
+
+- Task #7 통합 뒤 `backend` 밖의 공유 타입 계약을 Lambda 번들러가 해석하지 못하는 SAM 패키징 오류를 제거한다.
+- 공유 계약은 TypeScript 검사 기준으로 유지하되 Lambda 런타임 의존성은 `backend/` 빌드 경계 안으로 제한한다.
+- CloudFormation 실행 역할에 SAM 변환, DynamoDB TTL·카탈로그 테이블, 카탈로그 Lambda 역할, API Gateway 태그 권한을 최소 범위로 보완한다.
+
+#### Stage 4.3.2 — production·development 배포 검증
+
+- 최신 `devel`을 `main`에 반영해 production 스택을 갱신하고 카탈로그 1,022개 projection을 시드한다.
+- 동일 템플릿으로 development 스택도 갱신·시드한 뒤 health, stores, 3개 브랜드, partial resolve, Sites Origin CORS를 검증한다.
+- 기존 주문 테이블·스택·데이터는 삭제하지 않고, 변경 세트에 예상 밖 교체·삭제가 있으면 실행을 중단한다.
+
 ### 검증
 
 ```bash
@@ -144,6 +159,12 @@ sam deploy --stack-name prepped-dev-order-api ...
 GET /v1/health
 주문 생성·조회·완료·멱등 재시도·QR 재사용·CORS 스모크 테스트
 GitHub Actions Deploy Backend to AWS 성공
+pnpm --dir backend check
+pnpm --dir backend catalog:check
+pnpm --dir backend catalog:seed:dry
+sam validate --template backend/template.yaml --lint
+sam build --template-file backend/template.yaml
+GET /v1/stores 및 3개 브랜드 메뉴·partial resolve·Sites Origin CORS
 ```
 
 ### 커밋

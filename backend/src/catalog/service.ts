@@ -1,10 +1,10 @@
-import { QR_SAFE_ID } from "../../../shared/catalog/schema.ts";
 import {
+  QR_SAFE_ID,
   STORE_KEYS,
   type CatalogMenuDetail,
   type CatalogMenuSummary,
   type StoreKey,
-} from "../../../shared/catalog/types.ts";
+} from "./contract.ts";
 import { CatalogError, type CatalogMenuPage, type ResolvedCatalogMenus, type StoreCatalog } from "./domain.ts";
 import type { CatalogRepository } from "./repository.ts";
 

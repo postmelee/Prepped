@@ -3,7 +3,7 @@ import type {
   Category,
   Store,
   StoreKey,
-} from "../../../shared/catalog/types.ts";
+} from "./contract.ts";
 import type { CatalogManifest } from "./domain.ts";
 
 export type ListCatalogMenusInput = {

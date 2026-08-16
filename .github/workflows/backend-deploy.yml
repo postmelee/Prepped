@@ -93,7 +93,7 @@ jobs:
             --s3-bucket "$SAM_ARTIFACT_BUCKET" \
             --s3-prefix "$STACK_NAME/$GITHUB_SHA" \
             --role-arn "$CLOUDFORMATION_EXECUTION_ROLE_ARN" \
-            --capabilities CAPABILITY_IAM \
+            --capabilities CAPABILITY_NAMED_IAM \
             --parameter-overrides \
               StageName=prod \
               AllowedOrigins="$ALLOWED_ORIGINS" \

@@ -123,18 +123,26 @@ Task #3 Stage 3: GitHub OIDC 배포 경로 구성
 - 계정 소유자가 루트 MFA, IAM Identity Center, 예산 경보, OIDC Provider, `production` Environment 변수와 역할을 설정한다.
 - 장기 액세스 키·루트 비밀번호·크레딧 토큰은 저장소나 채팅으로 전달하지 않는다.
 
-### 수행 내용
+### Stage 4.1 — 개발 스택 부트스트랩·실배포
 
-- IAM Identity Center 임시 자격 증명으로 개발 스택을 먼저 배포하고, ChatGPT Sites Origin에서 API·CORS를 확인한다.
-- `main` 병합 뒤 GitHub `production` Environment 승인으로 OIDC 운영 배포를 실행한다.
-- GitHub Actions 실행 로그, CloudFormation 스택 출력, 자동 스모크 테스트, 비용 알림을 확인한다.
+- 전용 SAM 아티팩트 버킷을 퍼블릭 차단·기본 암호화·14일 수명 주기로 만든다.
+- GitHub OIDC Provider와 배포 역할·CloudFormation 실행 역할을 부트스트랩한다.
+- `prepped-dev-order-api`를 배포하고 health·초안 생성·조회·완료·멱등성·QR 재사용·CORS를 스모크 테스트한다.
+
+### Stage 4.2 — GitHub 운영 배포 활성화
+
+- 저장소 관리자가 GitHub `production` Environment와 보호 규칙·변수 9개를 설정한다.
+- 실제 ChatGPT Sites URL을 `ALLOWED_ORIGINS`, `QR_BASE_URL`, `SMOKE_TEST_ORIGIN`에 넣는다.
+- `main` 병합 뒤 GitHub OIDC 운영 배포와 원격 스모크 테스트를 실행한다.
+- GitHub Actions 실행 로그, CloudFormation 스택 출력, 비용 알림을 확인한다.
 
 ### 검증
 
 ```bash
 aws sts get-caller-identity
-sam deploy --guided
+sam deploy --stack-name prepped-dev-order-api ...
 GET /v1/health
+주문 생성·조회·완료·멱등 재시도·QR 재사용·CORS 스모크 테스트
 GitHub Actions Deploy Backend to AWS 성공
 ```
 

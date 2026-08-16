@@ -33,6 +33,8 @@ test("server-renders the Prepped mobile QR route", async () => {
   assert.match(html, /Prepped 메뉴 QR 앱/);
   assert.match(html, /내 메뉴 QR/);
   assert.match(html, /mcdonald=\{101,201,301\}/);
+  assert.match(html, /전체 링크 복사/);
+  assert.match(html, /맥도날드 메뉴 QR 링크 복사/);
   assert.match(html, /메뉴 만들기/);
   assert.match(html, /내 설정/);
   assert.match(html, /aria-current="page"/);
@@ -53,10 +55,11 @@ test("server-renders the Prepped kiosk route", async () => {
 });
 
 test("keeps the PWA and QR contracts explicit", async () => {
-  const [manifestSource, mobileSource, kioskSource] = await Promise.all([
+  const [manifestSource, mobileSource, kioskSource, shareSource] = await Promise.all([
     readFile(new URL("../public/manifest.webmanifest", import.meta.url), "utf8"),
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/kiosk/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/lib/qr-share.ts", import.meta.url), "utf8"),
   ]);
 
   const manifest = JSON.parse(manifestSource);
@@ -74,6 +77,13 @@ test("keeps the PWA and QR contracts explicit", async () => {
 
   assert.match(mobileSource, /onemeal-menu-v1/);
   assert.match(mobileSource, /mcdonald=\{\$\{savedIds\.join\(","\)\}\}/);
+  assert.match(mobileSource, /const qrPayload = sharedPayload \?\? localQrPayload/);
+  assert.match(mobileSource, /전체 링크 복사/);
+  assert.match(mobileSource, /맥도날드 메뉴 QR 링크 복사/);
+  assert.match(mobileSource, /공유받은 QR이에요/);
+  assert.match(mobileSource, /내 설정 메뉴는 바뀌지 않아요/);
+  assert.match(mobileSource, /function returnToLocalQr\(\)[\s\S]*?searchParams\.delete\("qr"\)/);
+  assert.doesNotMatch(mobileSource, /role="switch"|setStoreEnabled/);
   assert.match(mobileSource, /type AppTab = "qr" \| "create" \| "settings"/);
   assert.match(mobileSource, /<h1>내 설정 메뉴<\/h1>/);
   assert.match(mobileSource, /맥도날드에 저장한 메뉴/);
@@ -88,6 +98,11 @@ test("keeps the PWA and QR contracts explicit", async () => {
   assert.match(mobileSource, /저장하지 않으면 기존 메뉴가 그대로 유지돼요/);
   assert.match(mobileSource, /onClick=\{discardDraftAndLeave\} autoFocus/);
   assert.match(mobileSource, /disabled=\{selectedIds\.length === 0\}/);
+  assert.match(shareSource, /MAX_QR_PAYLOAD_LENGTH = 1_500/);
+  assert.match(shareSource, /new URL\("\/", origin\)/);
+  assert.match(shareSource, /url\.searchParams\.set\("qr", payload\)/);
+  assert.match(shareSource, /params\.getAll\("qr"\)\.length !== 1/);
+  assert.match(shareSource, /environment\.fallbackCopy\(text\)/);
   assert.match(kioskSource, /\(\[a-zA-Z0-9_-\]\+\)=\\\{\(\[\^}]\*\)\\\}/);
   assert.match(kioskSource, /navigator\.mediaDevices\.getUserMedia/);
   assert.match(kioskSource, /결제하기/);

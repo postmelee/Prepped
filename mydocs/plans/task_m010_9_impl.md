@@ -64,6 +64,7 @@ Task #9 Stage 1: 매장별·전체 QR 공유 링크 구현
 
 - `README.md`
 - `docs/technical-specification.md`
+- `package.json`
 - `tests/rendered-html.test.mjs`
 
 ### 변경 내용
@@ -72,6 +73,7 @@ Task #9 Stage 1: 매장별·전체 QR 공유 링크 구현
 - 공유 URL query, payload 검증, 길이 제한, 로컬 저장 비영속 정책, Clipboard fallback을 공식 기술 계약으로 기록한다.
 - 렌더링 소스 계약에 공유 버튼·query parser·비영속 경계·기존 편집 보호와 키오스크 parser 보존 검사를 추가한다.
 - `storeEnabled` 토글 표식을 요구하던 기존 테스트를 새 공유 행동에 맞게 갱신한다.
+- `npm test`가 공유 URL 단위 테스트와 렌더링 회귀 테스트를 함께 실행하도록 test glob을 확장한다.
 
 ### 검증
 

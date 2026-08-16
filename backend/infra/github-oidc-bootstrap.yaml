@@ -51,10 +51,12 @@ Resources:
                 Action:
                   - dynamodb:CreateTable
                   - dynamodb:DeleteTable
+                  - dynamodb:DescribeContinuousBackups
                   - dynamodb:DescribeTable
                   - dynamodb:DescribeTimeToLive
                   - dynamodb:TagResource
                   - dynamodb:UntagResource
+                  - dynamodb:UpdateContinuousBackups
                   - dynamodb:UpdateTable
                   - dynamodb:UpdateTimeToLive
                 Resource:

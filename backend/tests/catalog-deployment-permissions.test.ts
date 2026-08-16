@@ -13,7 +13,9 @@ test("CloudFormation execution role can manage only named Prepped catalog tables
 test("CloudFormation execution role can apply SAM, TTL, and API Gateway tags", async () => {
   const bootstrap = await readFile(new URL("../infra/github-oidc-bootstrap.yaml", import.meta.url), "utf8");
 
+  assert.match(bootstrap, /dynamodb:DescribeContinuousBackups/);
   assert.match(bootstrap, /dynamodb:DescribeTimeToLive/);
+  assert.match(bootstrap, /dynamodb:UpdateContinuousBackups/);
   assert.match(bootstrap, /dynamodb:UpdateTimeToLive/);
   assert.match(bootstrap, /cloudformation:CreateChangeSet/);
   assert.match(bootstrap, /transform\/Serverless-2016-10-31/);

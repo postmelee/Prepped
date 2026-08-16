@@ -97,7 +97,7 @@ AWS는 GitHub OIDC 역할에 `token.actions.githubusercontent.com:sub` 조건을
 
 ### 계정 부트스트랩 템플릿
 
-[`backend/infra/github-oidc-bootstrap.yaml`](../backend/infra/github-oidc-bootstrap.yaml)은 GitHub OIDC Provider, `PreppedGitHubDeployProduction` 역할, `PreppedCloudFormationExecution` 역할을 별도 CloudFormation 스택으로 만듭니다. GitHub 역할은 `production` Environment subject 두 가지 형식과 `prepped-prod-order-api` 스택, 지정한 CloudFormation 실행 역할로 제한합니다. CloudFormation 실행 역할은 `prepped-*-order-api` Lambda·주문 테이블과 `prepped-*-catalog` 카탈로그 테이블, 로그 그룹·HTTP API 및 지정한 아티팩트 버킷으로 권한을 제한합니다. 배포 역할에는 카탈로그 데이터 쓰기 권한을 주지 않습니다.
+[`backend/infra/github-oidc-bootstrap.yaml`](../backend/infra/github-oidc-bootstrap.yaml)은 GitHub OIDC Provider, `PreppedGitHubDeployProduction` 역할, `PreppedCloudFormationExecution` 역할을 별도 CloudFormation 스택으로 만듭니다. GitHub 역할은 `production` Environment subject 두 가지 형식과 `prepped-prod-order-api` 스택, 지정한 CloudFormation 실행 역할로 제한합니다. CloudFormation 실행 역할은 `prepped-*-order-api` Lambda·주문 테이블과 `prepped-*-catalog` 카탈로그 테이블, 로그 그룹·HTTP API 및 지정한 아티팩트 버킷으로 권한을 제한합니다. SAM Transform 변경 세트, DynamoDB TTL과 카탈로그 PITR의 조회·갱신, API Gateway 태그 작업도 이 이름 범위 안에서만 허용합니다. 배포 역할에는 카탈로그 데이터 쓰기 권한을 주지 않습니다.
 
 계정 부트스트랩 관리자는 IAM Identity Center 임시 자격 증명으로 아래 명령을 실행합니다. 현재 해커톤 계정의 버킷명은 `prepped-prod-sam-artifacts-845081398362`입니다.
 
@@ -159,6 +159,17 @@ MVP에는 별도 애플리케이션 비밀이 없습니다. 결제·사용자 �
 | `ALLOWED_ORIGINS` | `https://hankkipass-menu-qr.meleeisdeveloping.chatgpt.site` |
 | `QR_BASE_URL` | `https://hankkipass-menu-qr.meleeisdeveloping.chatgpt.site` |
 | `SMOKE_TEST_ORIGIN` | `https://hankkipass-menu-qr.meleeisdeveloping.chatgpt.site` |
+
+### 2026-08-16 실제 배포 결과
+
+| 환경 | 스택 | API Base URL | 카탈로그 테이블 | 결과 |
+|---|---|---|---|---|
+| production | `prepped-prod-order-api` | `https://o93v9vvzrl.execute-api.ap-northeast-2.amazonaws.com` | `prepped-prod-catalog` | `UPDATE_COMPLETE`, 1,022건 시드, 전체 스모크 통과 |
+| development | `prepped-dev-order-api` | `https://nv1a220o2i.execute-api.ap-northeast-2.amazonaws.com` | `prepped-dev-catalog` | `UPDATE_COMPLETE`, 1,022건 시드, 전체 스모크 통과 |
+
+카탈로그 테이블의 PITR을 만들 때 CloudFormation 실행 역할에는 `dynamodb:DescribeContinuousBackups`와 `dynamodb:UpdateContinuousBackups`가 모두 필요합니다. 또한 DynamoDB TTL, SAM Transform, API Gateway Stage 태그 권한도 부트스트랩 템플릿과 실제 역할을 일치시켜야 합니다. 실제 변경 세트에서는 기존 주문 테이블·Lambda의 교체나 삭제 없이 카탈로그 리소스가 추가됐습니다.
+
+Sites의 `/api/catalog/*`는 `PREPPED_API_BASE_URL` 바인딩이 없거나 아직 재배포되지 않았을 때 내장 스냅샷으로 동작합니다. 응답에 `cache-control: public, max-age=300`이 있고 AWS API 응답의 CORS 헤더가 없다면 로컬 fallback이므로, 환경 변수 저장 뒤 Sites를 다시 배포하고 프록시 응답을 재확인합니다.
 
 ## 배포 흐름
 
@@ -243,7 +254,7 @@ SAM으로 GitHub Actions 배포를 구성하는 기본 흐름은 [AWS SAM GitHub
 - [x] OIDC 배포 역할과 CloudFormation 실행 역할을 분리하고 `iam:PassRole` 범위를 실행 역할 하나로 제한
 - [x] CORS Origin이 실제 ChatGPT Sites URL로 제한됨
 - [ ] 10·18·22달러 Budgets 알림 및 이상 비용 알림 설정
-- [ ] `sam validate`, 백엔드 테스트, 개발 스택 스모크 테스트 통과
-- [ ] 카탈로그 수집 검증·dry-run, 대상 `CatalogTableName`, 3개 매장·대표 메뉴·resolve 스모크 확인
+- [x] `sam validate`, 백엔드 테스트, 개발 스택 스모크 테스트 통과
+- [x] 카탈로그 수집 검증·dry-run, 대상 `CatalogTableName`, 3개 매장·대표 메뉴·resolve 스모크 확인
 - [ ] Sites Worker `PREPPED_API_BASE_URL`이 현재 API Gateway 출력과 일치
-- [ ] 프로덕션 배포 및 롤백 담당자 확인
+- [x] 프로덕션 배포 완료 및 CloudFormation 자동 롤백 동작 확인

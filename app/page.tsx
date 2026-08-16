@@ -421,7 +421,6 @@ export default function Home() {
               </div>
               <div className="qr-store-list">
                 {(catalog?.stores ?? []).map((store) => {
-                  const setting = settings.stores[store.id];
                   const qrMenuIds =
                     qrGroups.find((group) => group.store === store.id)?.menuIds ?? [];
                   const names = qrMenuIds
@@ -458,19 +457,6 @@ export default function Home() {
                         <span aria-hidden="true">↗</span>
                         공유
                       </button>
-                      {!sharedPayload && (
-                        <button
-                          className="toggle"
-                          role="switch"
-                          aria-checked={setting.enabled}
-                          aria-label={`${store.name} QR 포함`}
-                          onClick={() => toggleStore(store.id)}
-                          disabled={!setting.menuIds.length}
-                          type="button"
-                        >
-                          <span />
-                        </button>
-                      )}
                     </div>
                   );
                 })}

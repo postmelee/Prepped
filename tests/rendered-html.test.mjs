@@ -107,11 +107,13 @@ test("keeps the PWA and QR contracts explicit", async () => {
   assert.match(mobileSource, /공유받은 QR이에요/);
   assert.match(mobileSource, /내 설정 메뉴는 바뀌지 않아요/);
   assert.match(mobileSource, /function returnToLocalQr\(\)[\s\S]*?searchParams\.delete\("qr"\)/);
-  assert.match(mobileSource, /role="switch"/);
+  assert.doesNotMatch(mobileSource, /role="switch"/);
   assert.match(mobileSource, /type AppTab = "qr" \| "create" \| "settings"/);
   assert.match(mobileSource, /<h1>내 설정 메뉴<\/h1>/);
   assert.match(settingsSource, /QR 사용 중/);
   assert.match(settingsSource, /설정 없음/);
+  assert.match(settingsSource, /className=\{`qr-status status-button/);
+  assert.match(settingsSource, /onClick=\{\(\) => onToggle\(store\.id\)\}/);
   assert.match(catalogSource, /예상 가격/);
   assert.match(catalogSource, /공식 확인 가격/);
   assert.match(catalogSource, /onError=\{\(\) => setFailed\(true\)\}/);
@@ -148,6 +150,10 @@ test("keeps the PWA and QR contracts explicit", async () => {
   assert.match(
     stylesSource,
     /\.bottom-sheet\s*\{[^}]*max-height:\s*min\(88dvh, 100%\);[^}]*overscroll-behavior:\s*contain;/s,
+  );
+  assert.match(
+    stylesSource,
+    /\.store-toggle\s*>\s*\.store-share-button\s*\{[^}]*grid-column:\s*3;[^}]*grid-row:\s*1;[^}]*justify-self:\s*end;/s,
   );
   assert.match(kioskSource, /navigator\.mediaDevices\.getUserMedia/);
   assert.match(kioskSource, /QR 문자열을 직접 입력할 수도 있어요/);

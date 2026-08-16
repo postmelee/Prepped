@@ -201,7 +201,7 @@ p {
 
 .store-toggle > .brand-mark {
   grid-column: 1;
-  grid-row: 1 / span 2;
+  grid-row: 1;
 }
 
 .store-toggle > .store-copy {
@@ -210,14 +210,9 @@ p {
 }
 
 .store-toggle > .store-share-button {
-  grid-column: 2;
-  grid-row: 2;
-  justify-self: start;
-}
-
-.store-toggle > .toggle {
   grid-column: 3;
-  grid-row: 1 / span 2;
+  grid-row: 1;
+  justify-self: end;
 }
 
 .brand-mark {

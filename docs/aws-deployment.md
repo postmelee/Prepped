@@ -63,12 +63,12 @@ AWS 장기 액세스 키를 GitHub Secrets에 저장하지 않습니다. GitHub 
 
 1. 저장소 Settings → Environments에서 `production` 환경을 만듭니다.
 2. 배포 가능 브랜치를 `main`으로 제한하고, 필요하면 팀 리더 1명의 승인 규칙을 추가합니다.
-3. 배포 워크플로는 `main` push 또는 `workflow_dispatch`만 허용합니다.
+3. `.github/workflows/backend-deploy.yml`은 `main` push 또는 `workflow_dispatch`만 허용합니다. `develop/backend`는 배포하지 않고 CI 검증만 수행합니다.
 4. 워크플로 job에 `permissions: id-token: write`, `contents: read`만 부여합니다.
 
 ### AWS OIDC Provider와 신뢰 정책
 
-IAM에 OIDC Provider `https://token.actions.githubusercontent.com`를 추가하고 Audience는 `sts.amazonaws.com`으로 설정합니다. 그 뒤 `PreppedGitHubDeployProduction` 역할의 신뢰 정책을 특정 저장소·브랜치로 제한합니다.
+IAM에 OIDC Provider `https://token.actions.githubusercontent.com`를 추가하고 Audience는 `sts.amazonaws.com`으로 설정합니다. 그 뒤 `PreppedGitHubDeployProduction` 역할의 신뢰 정책을 특정 저장소와 GitHub `production` Environment로 제한합니다. 아래 `{GITHUB_OIDC_SUBJECT}`에는 실제 workflow가 발급하는 `sub` 값을 정확히 넣습니다. 기존 형식은 `repo:postmelee/Prepped:environment:production`이지만, GitHub 조직·저장소 ID가 포함된 새 형식이 적용된 계정은 GitHub가 표시한 값으로 바꿉니다. 와일드카드를 사용하지 않습니다.
 
 ```json
 {
@@ -83,7 +83,7 @@ IAM에 OIDC Provider `https://token.actions.githubusercontent.com`를 추가하�
       "Condition": {
         "StringEquals": {
           "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
-          "token.actions.githubusercontent.com:sub": "repo:postmelee/Prepped:ref:refs/heads/main"
+          "token.actions.githubusercontent.com:sub": "{GITHUB_OIDC_SUBJECT}"
         }
       }
     }
@@ -91,7 +91,7 @@ IAM에 OIDC Provider `https://token.actions.githubusercontent.com`를 추가하�
 }
 ```
 
-GitHub Environment를 OIDC subject 조건에 사용하면 `sub` 형식이 `repo:postmelee/Prepped:environment:production`으로 바뀝니다. 이 경우 AWS 신뢰 정책과 GitHub Environment의 `main` 배포 브랜치 제한을 함께 적용합니다. 둘 중 하나의 subject 형식을 혼용하지 않습니다.
+GitHub Environment를 OIDC subject 조건에 사용하면 `sub` 형식이 Environment 기반으로 바뀝니다. AWS 신뢰 정책과 GitHub Environment의 `main` 배포 브랜치 제한을 함께 적용하고, 브랜치 기반 subject와 혼용하지 않습니다.
 
 AWS는 GitHub OIDC 역할에 `token.actions.githubusercontent.com:sub` 조건을 두고 특정 저장소·브랜치로 범위를 제한할 것을 권장합니다. [AWS GitHub OIDC 역할 구성](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_create_for-idp_oidc.html)과 [GitHub의 AWS OIDC 안내](https://docs.github.com/en/actions/how-tos/secure-your-work/security-harden-deployments/oidc-in-aws)를 참조합니다.
 
@@ -110,6 +110,24 @@ AWS는 GitHub OIDC 역할에 `token.actions.githubusercontent.com:sub` 조건을
 
 MVP에는 별도 애플리케이션 비밀이 없습니다. 결제·사용자 인증·외부 API 키가 생기는 후속 작업에서만 AWS Secrets Manager 또는 Parameter Store SecureString을 도입합니다.
 
+### GitHub `production` Environment 변수
+
+`backend-deploy.yml`은 아래 값을 GitHub Environment **Variables**에서만 읽습니다. 값은 비밀이 아니며, AWS 장기 액세스 키는 어떤 변수·Secret에도 넣지 않습니다.
+
+| 변수 | 예시 | 용도 |
+|---|---|---|
+| `AWS_REGION` | `ap-northeast-2` | 배포 리전 |
+| `AWS_ACCOUNT_ID` | `123456789012` | 잘못된 계정 배포 차단 |
+| `AWS_DEPLOY_ROLE_ARN` | `arn:aws:iam::...:role/PreppedGitHubDeployProduction` | OIDC로 가정할 역할 |
+| `CLOUDFORMATION_EXECUTION_ROLE_ARN` | `arn:aws:iam::...:role/PreppedCloudFormationExecution` | CloudFormation이 자원을 만들 때 쓰는 역할 |
+| `SAM_ARTIFACT_BUCKET` | `prepped-prod-sam-artifacts-{account}` | SAM 패키지 아티팩트 전용 S3 버킷 |
+| `ALLOWED_ORIGINS` | `https://{site}.chatgpt.site` | API Gateway와 Lambda CORS 허용 Origin 목록 |
+| `QR_BASE_URL` | `https://{site}.chatgpt.site` | QR의 `/kiosk?draft={token}` 기본 URL |
+| `DRAFT_TTL_DAYS` | `30` | 초안 TTL |
+| `SMOKE_TEST_ORIGIN` | `https://{site}.chatgpt.site` | 배포 후 CORS 스모크 테스트에 사용할 단일 Origin |
+
+`SAM_ARTIFACT_BUCKET`은 부트스트랩 관리자가 미리 만들고, Block Public Access·기본 암호화·필요한 수명 주기 정책을 적용합니다. GitHub 배포 역할에는 이 버킷과 `prepped-prod-order-api` 스택, 지정한 CloudFormation 실행 역할에 필요한 최소 권한만 부여합니다. CloudFormation 실행 역할은 이 SAM 템플릿이 만드는 Lambda, API Gateway, DynamoDB, CloudWatch Logs 및 Lambda 실행 역할만 생성·변경하도록 시작하고, 첫 배포 뒤 CloudTrail과 IAM Access Analyzer를 근거로 더 축소합니다.
+
 ## 배포 흐름
 
 ### 개발 환경
@@ -122,10 +140,10 @@ MVP에는 별도 애플리케이션 비밀이 없습니다. 결제·사용자 �
 ### 프로덕션 환경
 
 1. `develop/backend` 변경을 `main` 대상 PR로 생성합니다.
-2. 코드·API 명세·SAM 변경·비용 영향·CORS Origin을 검토합니다.
-3. `main` 병합 후 GitHub Actions가 OIDC 역할을 가정합니다.
-4. `sam build`, `sam deploy`가 CloudFormation 변경 세트를 적용합니다.
-5. 배포 후 health, 초안 생성·조회·완료, 오류, CORS를 스모크 테스트합니다.
+2. `Backend CI`가 테스트·TypeScript 빌드·SAM 린트를 통과하고, 코드·API 명세·SAM 변경·비용 영향·CORS Origin을 검토합니다.
+3. `main` 병합 후 `Deploy Backend to AWS`가 `production` Environment 승인과 OIDC 역할 가정을 기다립니다.
+4. 워크플로가 다시 테스트·SAM 검증을 실행한 뒤 전용 S3 버킷으로 패키징하고 CloudFormation 실행 역할을 통해 `prepped-prod-order-api`를 배포합니다.
+5. 배포 후 `GET /v1/health`, 초안 생성·조회·완료, 멱등 재시도, QR 재사용, CORS를 자동 스모크 테스트합니다. 토큰이나 주문 내용은 로그에 출력하지 않습니다.
 6. CloudWatch 오류·지연과 AWS Budgets 알림을 확인합니다.
 
 SAM으로 GitHub Actions 배포를 구성하는 기본 흐름은 [AWS SAM GitHub Actions 배포 문서](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/deploying-using-github.html)를 참조합니다. 이 프로젝트는 장기 액세스 키 예시 대신 앞 절의 OIDC 자격 증명을 사용합니다.
@@ -159,6 +177,8 @@ SAM으로 GitHub Actions 배포를 구성하는 기본 흐름은 [AWS SAM GitHub
 - [ ] 개발·프로덕션 역할이 최소 권한이고 `PassRole` 범위가 제한됨
 - [ ] GitHub OIDC Provider와 `postmelee/Prepped`의 `main` 조건 설정
 - [ ] GitHub `production` Environment가 `main`만 허용
+- [ ] `production` Environment 변수 9개와 전용 SAM 아티팩트 버킷 설정
+- [ ] OIDC 배포 역할과 CloudFormation 실행 역할을 분리하고 `iam:PassRole` 범위를 실행 역할 하나로 제한
 - [ ] CORS Origin이 실제 ChatGPT Sites URL과 로컬 개발 URL로 제한됨
 - [ ] 10·18·22달러 Budgets 알림 및 이상 비용 알림 설정
 - [ ] `sam validate`, 백엔드 테스트, 개발 스택 스모크 테스트 통과

@@ -10,7 +10,7 @@ GitHub Issue: [#4](https://github.com/postmelee/Prepped/issues/4)
 |---|---|---|---|
 | 1 | 매장별 설정 화면과 탐색 구현 | `app/page.tsx`, `app/globals.css` | 빌드, QR·저장 계약 정적 확인 |
 | 2 | 문서·자동 테스트·사용자 시나리오 검증 | `README.md`, `docs/technical-specification.md`, `tests/rendered-html.test.mjs` | test/build, 모바일·키오스크 브라우저 시나리오 |
-| 3 | 프로덕션 배포와 통합 검증 | Sites version 3, 배포·검증 기록 | 배포 성공, 프로덕션 두 경로 확인 |
+| 3 | 배포 버전 저장과 통합 검증 | Sites version 3, 게시 대기·검증 기록 | 저장 source SHA, 공개 안전 게이트, 최종 빌드 확인 |
 
 ## 문서 위치 확인
 
@@ -98,34 +98,34 @@ git diff --check
 Task #4 Stage 2: 설정 화면 계약과 사용자 흐름 검증
 ```
 
-## Stage 3 — 프로덕션 배포와 통합 검증
+## Stage 3 — 배포 버전 저장과 통합 검증
 
 ### 산출물
 
-- 기존 Sites 프로젝트의 version 3 배포
+- 기존 Sites 프로젝트의 version 3 저장
 - `mydocs/working/task_m010_4_stage3.md`
 
 ### 변경 내용
 
-- Stage 2에서 검증한 정확한 소스를 기존 `Prepped` Sites 프로젝트에 게시한다.
-- owner-only private 접근 정책과 기존 URL을 유지한다.
-- 프로덕션 `/`에서 세 하단 탭, 설정 카드, 편집 진입과 QR 표시를 확인한다.
-- 프로덕션 `/kiosk`의 샘플 인식 흐름을 회귀 확인한다.
+- Stage 2에서 검증한 정확한 소스를 기존 `Prepped` Sites 프로젝트의 version 3으로 저장한다.
+- version 3 archive와 source SHA가 현재 검증 커밋과 일치하는지 확인한다.
+- 현재 Sites가 `public`인 사실과 공개 게시에 별도 접근 수준 승인이 필요한 안전 게이트를 기록한다.
+- 승인 전에는 version 3을 프로덕션에 게시하지 않고 현재 live version 2를 유지한다.
 
 ### 검증
 
 ```bash
 npm run build
-git diff --check publish/task1...HEAD
+git diff --check origin/publish/task1...HEAD
 ```
 
-- Sites deployment status: `succeeded`
-- 프로덕션 `/`, `/kiosk` 브라우저 확인
+- Sites version 3 source SHA가 Stage 2 검증 커밋과 일치
+- 공개 프로덕션 version 2 유지와 version 3 게시 대기 상태 확인
 
 ### 커밋
 
 ```text
-Task #4 Stage 3: 내 설정 메뉴 프로덕션 배포와 통합 검증
+Task #4 Stage 3: 배포 버전 저장과 통합 검증
 ```
 
 ## 검증
@@ -152,6 +152,7 @@ Task #4 Stage 3: 내 설정 메뉴 프로덕션 배포와 통합 검증
 - **저장 데이터 회귀**: 화면은 기존 ID 배열에서 파생하고 저장 schema·key를 변경하지 않는다.
 - **매장 확장 오해**: 서브웨이 카드는 향후 확장 표면이지만 선택 가능하다고 보이지 않게 준비 중 상태를 고정한다.
 - **내비게이션 혼잡**: 3열 균등 배치, 짧은 레이블, 64px 이상의 높이로 시니어 사용자의 터치 정확도를 유지한다.
+- **공개 Sites 게시**: 현재 접근 모드가 `public`이므로 version 3 게시에는 공개 접근 수준을 명시한 별도 승인이 필요하다. 승인 전에는 저장된 version만 유지한다.
 
 ## 승인 요청 사항
 

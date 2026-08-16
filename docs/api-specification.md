@@ -4,7 +4,8 @@
 
 | 항목 | 값 |
 |---|---|
-| Base URL | 환경 변수 `PREPPED_API_BASE_URL`로 주입하는 API Gateway HTTPS URL |
+| 공개 API Base URL | 환경 변수 `PREPPED_API_BASE_URL`로 주입하는 API Gateway HTTPS URL |
+| 웹앱 호출 경계 | 같은 Origin의 `/api/catalog/*`; Sites Worker가 공개 API `/v1/*`로 전달하거나 검증된 스냅샷으로 응답 |
 | 콘텐츠 유형 | `application/json; charset=utf-8` |
 | 버전 | URL 경로 `/v1` |
 | 인증 | MVP 카탈로그는 공개 읽기. 주문 초안 토큰은 키오스크 조회를 허용하는 난수 권한 증표 |
@@ -45,10 +46,10 @@
 
 ```json
 {
-  "id": "subway-egg-mayo-15cm",
+  "id": "subway-1530-15cm",
   "storeId": "subway",
   "categoryId": "sandwich",
-  "baseProductId": "43",
+  "baseProductId": "1530",
   "name": "에그마요",
   "variant": {
     "label": "15cm",
@@ -74,18 +75,18 @@
   ],
   "source": {
     "provider": "subway",
-    "productId": "43",
+    "productId": "1530",
     "productUrl": "https://www.subway.co.kr/menuList/sandwich",
     "imageUrl": "https://...",
     "imageUsage": "reference-only",
-    "collectedAt": "2026-08-16T06:00:00Z"
+    "collectedAt": "2026-08-16T07:00:00Z"
   },
   "isAvailable": true
 }
 ```
 
-- `id`는 QR에 넣는 안정 ID이며 영문·숫자·하이픈·밑줄만 허용합니다.
-- `baseProductId`와 `source.productId`는 공식 페이지의 원본 식별자이며 안정 ID로 사용하지 않습니다.
+- `id`는 QR에 넣는 카탈로그 ID이며 영문·숫자·하이픈·밑줄만 허용합니다. 현재 스냅샷은 `{storeId}-{sourceProductId}`에 핵심 변형 suffix를 붙여 만듭니다.
+- `baseProductId`와 `source.productId`는 공식 페이지의 원본 식별자입니다. 공식 식별자가 바뀌면 수집 검토와 레거시 매핑을 거쳐 QR ID를 이관합니다.
 - `price.type=estimated`이면 표시용 예상 가격이며 실제 결제 가격으로 신뢰하지 않습니다.
 - `source.imageUsage=reference-only`는 이미지 URL이 출처 참조일 뿐 바이너리 재배포 허가가 아님을 뜻합니다.
 - 핵심 주문 변형은 별도 메뉴 ID이고, `optionGroups`는 해당 변형에서 가능한 추가 선택을 설명합니다. 원문 QR v0.1.0은 옵션 ID를 별도 전송하지 않습니다.
@@ -154,7 +155,7 @@
         ]
       }
     ],
-    "catalogVersion": "2026-08-16"
+    "catalogVersion": "2026-08-16.1"
   }
 }
 ```
@@ -179,24 +180,24 @@
     "store": { "id": "starbucks", "name": "스타벅스" },
     "menus": [
       {
-        "id": "starbucks-caffe-americano-hot",
+        "id": "starbucks-94",
         "storeId": "starbucks",
-        "categoryId": "espresso",
+        "categoryId": "drink-espresso",
         "name": "카페 아메리카노",
         "variant": { "label": "HOT", "attributes": { "temperature": "hot" } },
-        "price": { "amount": 4700, "currency": "KRW", "type": "estimated" },
+        "price": { "amount": 5700, "currency": "KRW", "type": "estimated" },
         "source": {
           "provider": "starbucks",
           "productId": "94",
-          "productUrl": "https://www.starbucks.co.kr/menu/drink_list.do",
+          "productUrl": "https://www.starbucks.co.kr/menu/drink_view.do?product_cd=94",
           "imageUsage": "reference-only",
-          "collectedAt": "2026-08-16T06:00:00Z"
+          "collectedAt": "2026-08-16T07:00:00Z"
         },
         "isAvailable": true
       }
     ],
     "nextCursor": null,
-    "catalogVersion": "2026-08-16"
+    "catalogVersion": "2026-08-16.1"
   }
 }
 ```
@@ -212,8 +213,8 @@
 ```json
 {
   "data": {
-    "menu": { "id": "subway-egg-mayo-15cm", "optionGroups": [] },
-    "catalogVersion": "2026-08-16"
+    "menu": { "id": "subway-1530-15cm", "optionGroups": [] },
+    "catalogVersion": "2026-08-16.1"
   }
 }
 ```
@@ -229,7 +230,7 @@
 ```json
 {
   "storeId": "mcdonald",
-  "menuIds": ["mcdonald-big-mac", "mcdonald-fries", "unknown-id"]
+  "menuIds": ["mcdonald-178", "mcdonald-720", "unknown-id"]
 }
 ```
 
@@ -245,11 +246,11 @@
   "data": {
     "store": { "id": "mcdonald", "name": "맥도날드" },
     "menus": [
-      { "id": "mcdonald-big-mac", "name": "빅맥", "optionGroups": [] },
-      { "id": "mcdonald-fries", "name": "후렌치 후라이", "optionGroups": [] }
+      { "id": "mcdonald-178", "name": "빅맥® 세트", "optionGroups": [] },
+      { "id": "mcdonald-720", "name": "후렌치 후라이 Medium", "optionGroups": [] }
     ],
     "unknownMenuIds": ["unknown-id"],
-    "catalogVersion": "2026-08-16"
+    "catalogVersion": "2026-08-16.1"
   }
 }
 ```
@@ -414,3 +415,7 @@ Idempotency-Key: 5a9d3b8c-9f3a-4adc-ae8a-10a9b3477d3c
 3. 둘 다 아니면 `VALIDATION_ERROR` 안내와 재스캔 버튼을 제공합니다.
 
 Task #7은 원문 다중 매장 QR을 계약 경계로 유지하며 주문 초안 URL을 기본 QR로 바꾸지 않습니다. 토큰 QR의 제품 적용은 별도 승인·프론트 통합 전까지 #3 백엔드 기능으로만 존재합니다.
+
+## 현재 카탈로그 스냅샷
+
+버전 `2026-08-16.1`은 공식 메뉴 페이지에서 수집·검토한 맥도날드 91개, 서브웨이 93개, 스타벅스 311개 메뉴를 포함합니다. 메뉴 목록 API는 총 495개를 페이지 단위로 반환합니다. 이미지 URL은 공식 호스트의 `reference-only` 참조이며, 서브웨이 에그마요 15cm/30cm 외 현재 가격 값은 모두 `estimated`입니다. 옵션 그룹은 화면의 커스텀 가능성을 설명하지만 QR v0.1.0에는 선택 옵션을 넣지 않습니다.

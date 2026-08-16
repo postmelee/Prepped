@@ -28,8 +28,8 @@ v0.1.0은 실제 매장 카탈로그 조회와 원문 QR 기반 키오스크 메
 
 ### 3.1 카탈로그 ID와 변형
 
-- 메뉴 ID는 QR 문법에 맞는 영문·숫자·하이픈·밑줄 문자열이며 `{storeKey}-{product}-{variant}`를 기본 형태로 사용한다.
-- 공식 사이트의 숫자 ID는 변경될 수 있으므로 `sourceProductId`로 분리하고 QR의 장기 식별자로 직접 사용하지 않는다.
+- 메뉴 ID는 QR 문법에 맞는 영문·숫자·하이픈·밑줄 문자열이다. 현재 스냅샷은 `{storeKey}-{sourceProductId}`를 기본으로 하고 서브웨이 길이처럼 핵심 변형은 suffix를 붙인다.
+- 공식 사이트의 원본 ID는 `baseProductId`와 `source.productId`에도 보존한다. 원본 ID가 바뀌면 수집 검토와 레거시 매핑으로 기존 저장값을 이관한다.
 - 서브웨이 15cm/30cm와 스타벅스 HOT/ICED처럼 주문 결과를 결정하는 핵심 변형은 별도 메뉴 ID다.
 - 메뉴명, 가격, 이미지 URL, 판매 여부, 옵션은 QR에 복제하지 않고 API 결과를 표시한다.
 - 기존 숫자 맥도날드 ID는 로컬 저장 마이그레이션과 레거시 QR 해석 표에서 새 안정 ID로 대응한다.
@@ -46,11 +46,11 @@ v0.1.0은 실제 매장 카탈로그 조회와 원문 QR 기반 키오스크 메
 
 - 하단 탐색의 `내 설정`은 매장별 설정 카드를 보여준다.
 - 각 매장 카드는 저장 ID를 카탈로그에서 조회해 메뉴 이름, 현재 가격 유형, 개수와 합계를 표시한다.
-- QR 포함 상태는 `QR 사용 중` 또는 `QR 제외`로 표시한다. 상태 변경은 QR 화면의 매장 토글에서 담당한다.
-- 매장 카드의 `메뉴 바꾸기`는 해당 매장이 선택된 상태로 카테고리 단계부터 열고 새 조합을 만들 수 있도록 선택 메뉴를 모두 비운다.
-- 편집 초안은 `savedIds`와 분리한다. 뒤로가기로 편집을 종료하거나 다른 하단 탭으로 이동하려 하면 저장 확인 모달을 표시한다.
+- QR 포함 상태는 `QR 사용 중` 또는 `QR 제외`로 표시한다. QR 화면의 스위치와 설정 카드의 상태 버튼에서 변경한다.
+- 매장 카드의 `메뉴 바꾸기`는 해당 매장이 선택된 상태로 카테고리 단계부터 열고 기존 저장 메뉴를 편집 초안으로 불러온다.
+- 편집 초안은 저장된 `menuIds`와 분리한다. 뒤로가기로 편집을 종료하거나 다른 하단 탭으로 이동하려 하면 저장 확인 모달을 표시한다.
 - 모달의 안전한 기본 행동은 `저장하지 않음`이며 초기 포커스를 받는다. 이 행동은 초안을 버리고 기존 저장 메뉴를 그대로 유지한다.
-- 초안에 메뉴가 있을 때만 모달의 `저장하기`를 사용할 수 있으며, 명시적으로 저장한 경우에만 `savedIds`와 QR을 갱신한다.
+- 모달의 `저장하기`를 명시적으로 누른 경우에만 `menuIds`와 QR을 갱신한다. 메뉴가 0개인 초안을 저장하면 그 매장 설정과 QR 포함 상태를 비운다.
 - 하단 탐색의 `메뉴 만들기`는 여러 매장 중 새 조합을 만들 수 있도록 매장 선택 단계부터 연다.
 - 설정이 없는 매장은 `설정 없음`을 표시하고 메뉴 생성 흐름으로 진입할 수 있다.
 - 설정 화면의 이름과 가격은 표시용 파생 데이터다. 저장소와 QR에는 기존처럼 메뉴 ID만 유지한다.
@@ -69,8 +69,8 @@ menu-id     = 1*(ALPHA / DIGIT / "_" / "-")
 예시:
 
 ```text
-mcdonald={101,201,301}
-mcdonald={mcdonald-big-mac,mcdonald-fries};subway={subway-egg-mayo-15cm};starbucks={starbucks-caffe-americano-hot}
+mcdonald={mcdonald-178,mcdonald-720,mcdonald-28}
+mcdonald={mcdonald-178,mcdonald-720};subway={subway-1530-15cm};starbucks={starbucks-94}
 ```
 
 ### 4.2 serializer
@@ -92,19 +92,32 @@ mcdonald={mcdonald-big-mac,mcdonald-fries};subway={subway-egg-mayo-15cm};starbuc
 
 개인당 QR은 화면에서 한 개만 관리하며, 여러 매장 조합이 생기면 한 문자열 안에 매장 그룹을 합친다.
 
-영속 상태는 브라우저 `localStorage`의 기존 `onemeal-menu-v1` 키에 저장한다. 키 이름을 유지해 기존 사용자를 마이그레이션한다.
+영속 상태는 브라우저 `localStorage`의 `prepped-menu-settings-v2` 키에 저장한다. 현재 키가 없으면 기존 `onemeal-menu-v1`을 읽어 새 구조로 마이그레이션한다.
 
 ```ts
 type StoredMenu = {
   version: 2;
   stores: Partial<Record<"mcdonald" | "subway" | "starbucks", {
-    savedIds: string[];
+    menuIds: string[];
     enabled: boolean;
   }>>;
 };
 ```
 
 기존 `{ savedIds: number[], storeEnabled: boolean }` 값은 맥도날드 설정으로 읽고 알려진 숫자 ID를 새 안정 ID로 변환한다. 이 저장소는 기기 로컬 상태다. 사용자 계정, 서버 백업, 기기 간 동기화를 제공하지 않는다.
+
+| 기존 ID | 현재 ID | 메뉴 |
+|---|---|---|
+| `101` | `mcdonald-178` | 빅맥® 세트 |
+| `102` | `mcdonald-181` | 불고기 버거 세트 |
+| `103` | `mcdonald-2` | 1955® 버거 세트 |
+| `104` | `mcdonald-603` | 맥스파이시® 상하이 버거 세트 |
+| `201` | `mcdonald-720` | 후렌치 후라이 Medium |
+| `202` | `mcdonald-722` | 맥너겟® 6조각 |
+| `203` | `mcdonald-126` | 해쉬 브라운 |
+| `302` | `mcdonald-28` | 아메리카노 Medium |
+
+매핑되지 않은 `301`, `303`은 원문 ID와 이전 표시명을 유지하고 키오스크에서 미확인 항목으로 안내한다.
 
 ## 6. QR 생성·스캔 흐름
 
@@ -121,7 +134,7 @@ type StoredMenu = {
   → 결제 데모
 ```
 
-키오스크는 `navigator.mediaDevices.getUserMedia`로 카메라를 요청하고 비디오 프레임을 캔버스에 그린 뒤 `jsQR`로 읽는다. 인식에 성공하면 카메라 트랙을 중지한다. 카메라를 사용할 수 없는 환경에서는 샘플 QR 버튼으로 후속 화면을 확인한다.
+키오스크는 `navigator.mediaDevices.getUserMedia`로 카메라를 요청하고 비디오 프레임을 캔버스에 그린 뒤 `jsQR`로 읽는다. 인식에 성공하면 카메라 트랙을 중지한다. 카메라를 사용할 수 없는 환경에서는 다중 매장 샘플 QR 또는 원문 수동 입력으로 후속 화면을 확인한다.
 
 ## 7. 카탈로그 API 경계
 
@@ -130,11 +143,15 @@ type StoredMenu = {
 ```json
 {
   "storeId": "mcdonald",
-  "menuIds": ["mcdonald-big-mac", "mcdonald-fries"]
+  "menuIds": ["mcdonald-178", "mcdonald-720"]
 }
 ```
 
 `POST /v1/catalog/resolve`는 매장 키와 메뉴 ID를 검증하고 현재 이름, 가격 유형, 판매 여부, 변형, 옵션 정보를 반환한다. 다른 매장 또는 없는 ID는 `unknownMenuIds`에 넣어 부분 성공을 허용한다. 프런트엔드는 QR에 들어 있지 않은 가격이나 이름을 추측하지 않고 응답 데이터를 주문 목록에 표시한다.
+
+브라우저 코드는 공개 API를 직접 호출하지 않고 같은 Origin의 `/api/catalog` 경계를 사용한다. Sites Worker는 `PREPPED_API_BASE_URL`이 있으면 이를 API Gateway `/v1` 경로로 전달하고, 값이 없는 로컬·프리뷰 환경에서는 같은 계약의 검증 스냅샷을 반환한다.
+
+카탈로그 `2026-08-16.1`은 맥도날드 91개, 서브웨이 93개, 스타벅스 311개로 총 495개다. 이미지 URL은 공식 호스트의 `reference-only` 참조이며 바이너리를 재배포하지 않는다. 서브웨이 에그마요 길이별 가격 외 스냅샷 가격은 `estimated` 표시용 값이다. 13개 옵션 그룹은 브랜드별 커스텀 가능성을 설명하지만 v0.1.0 QR에는 옵션 선택값을 직렬화하지 않는다.
 
 API 연결 전후의 계약 경계는 다음과 같다.
 

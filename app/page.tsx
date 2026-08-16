@@ -357,7 +357,7 @@ export default function Home() {
                 })}
                 {detailLoading && <p className="detail-loading" role="status">커스텀 가능 옵션을 확인하는 중이에요…</p>}
               </div>
-              <p className="customization-note">QR에는 메뉴 ID와 기본 옵션이 저장돼요. 표시된 커스텀은 키오스크에서 바꿀 수 있어요.</p>
+              <p className="customization-note">QR에는 메뉴 ID만 저장돼요. 표시된 커스텀 항목의 선택값은 저장되지 않아요.</p>
               <div className="sheet-total"><span>예상 합계</span><strong>{formatPrice(selectedTotal)}</strong></div>
               <button className="primary-button" type="button" onClick={() => persistActiveStore("qr")}>이 메뉴로 저장하기</button>
             </section>

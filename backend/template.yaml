@@ -73,6 +73,7 @@ Resources:
   CatalogTable:
     Type: AWS::DynamoDB::Table
     Properties:
+      TableName: !Sub prepped-${StageName}-catalog
       BillingMode: PAY_PER_REQUEST
       AttributeDefinitions:
         - AttributeName: pk
@@ -114,8 +115,37 @@ Resources:
             Version: "2012-10-17"
             Statement:
               - Effect: Allow
-                Action: [dynamodb:GetItem, dynamodb:PutItem, dynamodb:TransactWriteItems]
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                  - dynamodb:TransactWriteItems
                 Resource: !GetAtt OrderTable.Arn
+
+  CatalogApiFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub prepped-${StageName}-catalog-api-lambda
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess
+      Policies:
+        - PolicyName: PreppedCatalogTableReadAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:BatchGetItem
+                  - dynamodb:Query
+                Resource: !GetAtt CatalogTable.Arn
 
   HealthLogGroup:
     Type: AWS::Logs::LogGroup
@@ -164,12 +194,9 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: .
+      FunctionName: !Sub prepped-${StageName}-order-api-list-stores
       Handler: src/handlers/list-stores.handler
-      Policies: &CatalogTableReadPolicy
-        - Statement:
-            Effect: Allow
-            Action: [dynamodb:GetItem, dynamodb:BatchGetItem, dynamodb:Query]
-            Resource: !GetAtt CatalogTable.Arn
+      Role: !GetAtt CatalogApiFunctionRole.Arn
       Events:
         ListStores:
           Type: HttpApi
@@ -186,8 +213,9 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: .
+      FunctionName: !Sub prepped-${StageName}-order-api-list-menus
       Handler: src/handlers/list-menus.handler
-      Policies: *CatalogTableReadPolicy
+      Role: !GetAtt CatalogApiFunctionRole.Arn
       Events:
         ListMenus:
           Type: HttpApi
@@ -204,8 +232,9 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: .
+      FunctionName: !Sub prepped-${StageName}-order-api-get-menu
       Handler: src/handlers/get-menu.handler
-      Policies: *CatalogTableReadPolicy
+      Role: !GetAtt CatalogApiFunctionRole.Arn
       Events:
         GetMenu:
           Type: HttpApi
@@ -222,8 +251,9 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: .
+      FunctionName: !Sub prepped-${StageName}-order-api-resolve-menus
       Handler: src/handlers/resolve-menus.handler
-      Policies: *CatalogTableReadPolicy
+      Role: !GetAtt CatalogApiFunctionRole.Arn
       Events:
         ResolveMenus:
           Type: HttpApi

@@ -99,7 +99,8 @@ test("keeps the PWA and QR contracts explicit", async () => {
   assert.match(mobileSource, /저장하지 않으면 기존 메뉴가 그대로 유지돼요/);
   assert.match(mobileSource, /onClick=\{discardDraftAndLeave\} autoFocus/);
   assert.match(mobileSource, /resolveCatalogMenus\(activeStoreId, selectedIds\)/);
-  assert.match(mobileSource, /QR에는 메뉴 ID와 기본 옵션이 저장돼요/);
+  assert.match(mobileSource, /QR에는 메뉴 ID만 저장돼요/);
+  assert.match(mobileSource, /커스텀 항목의 선택값은 저장되지 않아요/);
   assert.match(kioskResolveSource, /selectStoreMenuIds\(raw, storeId\)/);
   assert.match(kioskResolveSource, /resolveCatalogMenus\(storeId, requestedMenuIds\)/);
   assert.match(kioskSelectorSource, /맥도날드/);

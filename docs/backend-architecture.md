@@ -8,12 +8,12 @@ Prepped는 사용자가 메뉴 조합을 미리 고르고 QR로 전달하면, �
 
 ## 현재 상태와 전환 원칙
 
-현재 프론트엔드는 `localStorage`와 `mcdonald={101,201,301}` 형식의 QR 원문을 사용합니다. 이 형식은 기존 데모와 호환되므로 즉시 제거하지 않습니다.
+현재 프론트엔드는 카탈로그 버전 `2026-08-16.1`의 495개 실제 메뉴를 조회하고, 매장별 메뉴 ID를 기기 `localStorage`에 저장합니다. 새 설정은 `prepped-menu-settings-v2`에 보관하며 기존 `onemeal-menu-v1` 값은 읽을 때 알려진 숫자형 맥도날드 ID를 이관합니다.
 
 Task #7의 기본 QR은 기존 원문 계약을 그대로 확장해 여러 매장을 세미콜론으로 구분합니다. 메뉴명, 옵션 객체, 금액, 이름, 전화번호, 결제 정보는 QR 본문에 포함하지 않습니다.
 
 ```text
-mcdonald={mcdonald-big-mac,mcdonald-fries};subway={subway-egg-mayo-15cm}
+mcdonald={mcdonald-178,mcdonald-720};subway={subway-1530-15cm};starbucks={starbucks-94}
 ```
 
 키오스크는 사용자가 먼저 선택한 매장 그룹만 추출해 카탈로그 일괄 해석 API를 호출합니다. Issue #3의 주문 초안 URL QR은 별도 백엔드 기능으로 유지하지만, 프론트 통합이 승인되기 전까지 기본 QR로 전환하지 않습니다.
@@ -22,8 +22,10 @@ mcdonald={mcdonald-big-mac,mcdonald-fries};subway={subway-egg-mayo-15cm}
 
 ```mermaid
 flowchart LR
-    Guardian["모바일 PWA\nChatGPT Sites /"] -->|"GET stores / menus"| API["Amazon API Gateway\nHTTP API"]
-    Kiosk["키오스크 PWA\nChatGPT Sites /kiosk"] -->|"POST catalog resolve"| API
+    Guardian["모바일 PWA\nChatGPT Sites /"] -->|"같은 Origin /api/catalog"| Worker["Sites Worker\nAPI adapter"]
+    Kiosk["키오스크 PWA\nChatGPT Sites /kiosk"] -->|"같은 Origin /api/catalog"| Worker
+    Worker -->|"GET stores / menus\nPOST resolve"| API["Amazon API Gateway\nHTTP API"]
+    Worker -.->|"API 미설정·로컬"| Snapshot["검증된 내장\n카탈로그 스냅샷"]
     Guardian -.->|"선택 기능: POST draft"| API
     Kiosk -.->|"선택 기능: GET draft / complete"| API
     API --> Lambda["AWS Lambda\nTypeScript API"]
@@ -44,6 +46,7 @@ API Gateway HTTP API는 Lambda 통합, 명시적 CORS, 자동 배포를 지원�
 | 구성 요소 | 책임 | 보관하거나 처리하지 않는 정보 |
 |---|---|---|
 | ChatGPT Sites PWA | 전체 메뉴 조회, 기기 로컬 매장별 설정, 원문 QR 생성·표시 | AWS 자격 증명, 결제 정보, 서버 사용자 설정 |
+| Sites Worker adapter | 같은 Origin `/api/catalog`을 API Gateway `/v1`로 전달, API 미설정 환경의 검증 스냅샷 제공 | 사용자 설정, 이미지 바이너리, 결제 정보 |
 | API Gateway HTTP API | HTTPS 경로 라우팅, CORS preflight, 요청 크기·속도 제한 | 주문 영속 데이터 |
 | Lambda | 요청 검증, 서버 카탈로그 가격 계산, 토큰 발급, 초안·완료 기록 처리 | 장기 사용자 세션, 결제 수단 |
 | DynamoDB CatalogTable | 매장·카테고리·메뉴·변형·옵션 조회 projection | 이미지 바이너리, 사용자 설정, 결제 정보 |
@@ -103,7 +106,7 @@ MVP는 수명·권한·배포 주기가 다른 카탈로그와 주문을 두 Dyn
 | 메뉴 lookup projection | `MENU#{menuId}` / `META` | 목록 projection과 동일한 메뉴 snapshot | 단건 GetItem·일괄 BatchGetItem |
 | 카탈로그 manifest | `CATALOG` / `VERSION` | 버전, 수집 시각, 브랜드별 항목 수 | 응답 버전·시드 검증 |
 
-- 안정 메뉴 ID는 QR-safe 문자열이며 공식 사이트 ID는 별도 `sourceProductId`입니다.
+- 카탈로그 메뉴 ID는 QR-safe 문자열이며 공식 사이트 ID는 `baseProductId`와 `source.productId`에도 보존합니다. 공식 ID 변경은 스냅샷 검토와 레거시 매핑으로 이관합니다.
 - 15cm/30cm와 HOT/ICED 같은 핵심 변형은 별도 메뉴 레코드입니다.
 - 빵·치즈·샷·우유처럼 가능한 커스텀은 조회 시 추가 round trip이 없도록 메뉴 projection에 옵션 그룹 snapshot으로 넣습니다.
 - 이미지 URL은 `reference-only` 출처 데이터이며 이미지 파일은 CatalogTable이나 R2에 저장하지 않습니다.
@@ -159,7 +162,7 @@ MVP는 수명·권한·배포 주기가 다른 카탈로그와 주문을 두 Dyn
 | AWS 개발 | 수동 승인된 SAM 배포 | 프론트엔드 연동·스모크 테스트 |
 | AWS 프로덕션 | `main`의 GitHub Actions OIDC | 최종 데모·배포 |
 
-백엔드 구현은 `develop/backend`에서 진행하고, 최종 통합·배포 PR은 `main`을 대상으로 합니다. 팀원의 `devel` 변경은 출시 전에 최신 상태를 반영하되, 다른 작업의 커밋을 강제 변경하지 않습니다.
+백엔드 기능 브랜치는 `develop/backend`를 기준으로 만들고, 검토된 변경은 먼저 `develop/backend`에 통합합니다. 프로덕션 배포는 이후 `develop/backend`를 `main`에 통합할 때만 실행합니다. 팀원의 다른 변경은 강제 변경하지 않습니다.
 
 ## 구현 파일 구조
 
@@ -183,4 +186,4 @@ docs/
   aws-deployment.md
 ```
 
-다음 단계에서는 이 구조와 API 명세를 그대로 구현하고, 문서와 코드가 어긋나면 API 명세를 먼저 갱신한 뒤 검토합니다.
+현재 구현은 수집 스냅샷 검증, DynamoDB 시드, 네 개 카탈로그 조회 경로, 모바일 전체 메뉴 선택, 다중 매장 QR, 키오스크 선택 매장 해석까지 연결합니다. 주문 초안 URL QR과 실제 POS·PG 연동은 이 원문 QR 흐름과 분리된 후속 경계입니다.

@@ -1,20 +1,15 @@
 import assert from "node:assert/strict";
-import { access, readFile, readdir } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-const developmentPreviewMeta =
-  /<meta(?=[^>]*\bname=["']codex-preview["'])(?=[^>]*\bcontent=["']development["'])[^>]*>/i;
-const templateRoot = new URL("../", import.meta.url);
-const previewRoot = new URL("../app/_sites-preview/", import.meta.url);
-
-async function render() {
+async function render(pathname) {
   const workerUrl = new URL("../dist/server/index.js", import.meta.url);
-  workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}`);
+  workerUrl.searchParams.set("test", `${pathname}-${process.pid}-${Date.now()}`);
   const { default: worker } = await import(workerUrl.href);
 
   return worker.fetch(
-    new Request("http://localhost/", {
-      headers: { accept: "text/html" },
+    new Request(`http://localhost${pathname}`, {
+      headers: { accept: "text/html", host: "localhost" },
     }),
     {
       ASSETS: {
@@ -28,64 +23,72 @@ async function render() {
   );
 }
 
-test("server-renders the starter loading skeleton", async () => {
-  const response = await render();
+test("server-renders the Prepped mobile QR route", async () => {
+  const response = await render("/");
   assert.equal(response.status, 200);
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
 
   const html = await response.text();
-  assert.match(html, developmentPreviewMeta);
-  assert.match(html, /<title>Your site is taking shape<\/title>/i);
-  assert.match(html, /Building your site/);
-  assert.match(html, /Your site is taking shape/);
-  assert.match(
-    html,
-    /Your first version will appear here automatically when it’s ready\./,
-  );
-  assert.doesNotMatch(html, /Codex/);
-  assert.match(html, /react-loading-skeleton/);
-  assert.match(html, /role="status"/);
+  assert.match(html, /<title>Prepped · 내 메뉴 QR<\/title>/i);
+  assert.match(html, /Prepped 메뉴 QR 앱/);
+  assert.match(html, /내 메뉴 QR/);
+  assert.match(html, /mcdonald=\{101,201,301\}/);
+  assert.match(html, /메뉴 만들기/);
+  assert.match(html, /내 설정/);
+  assert.match(html, /aria-current="page"/);
+  assert.doesNotMatch(html, /한끼패스|Your site is taking shape|react-loading-skeleton/);
 });
 
-test("keeps the loading skeleton scoped and disposable", async () => {
-  const [preview, css, page, layout, packageJson, files] = await Promise.all([
-    readFile(new URL("SkeletonPreview.tsx", previewRoot), "utf8"),
-    readFile(new URL("preview.css", previewRoot), "utf8"),
+test("server-renders the Prepped kiosk route", async () => {
+  const response = await render("/kiosk");
+  assert.equal(response.status, 200);
+  assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
+
+  const html = await response.text();
+  assert.match(html, /<title>키오스크 QR 스캐너 · Prepped<\/title>/i);
+  assert.match(html, /휴대폰 QR을/);
+  assert.match(html, /카메라 켜기/);
+  assert.match(html, /샘플 QR로 미리 보기/);
+  assert.doesNotMatch(html, /한끼패스|Your site is taking shape/);
+});
+
+test("keeps the PWA and QR contracts explicit", async () => {
+  const [manifestSource, mobileSource, kioskSource] = await Promise.all([
+    readFile(new URL("../public/manifest.webmanifest", import.meta.url), "utf8"),
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
-    readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
-    readFile(new URL("../package.json", import.meta.url), "utf8"),
-    readdir(previewRoot),
+    readFile(new URL("../app/kiosk/page.tsx", import.meta.url), "utf8"),
   ]);
 
-  assert.deepEqual(files.sort(), ["SkeletonPreview.tsx", "preview.css"]);
-  assert.match(preview, /from "react-loading-skeleton"/);
-  assert.match(preview, /baseColor="#eceae7"/);
-  assert.match(preview, /highlightColor="#f9f8f6"/);
-  assert.match(preview, /duration=\{2\.8\}/);
-  assert.match(preview, /sites-skeleton-search-placeholder/);
-  assert.match(packageJson, /"react-loading-skeleton": "3\.5\.0"/);
-
-  const shellIndex = preview.indexOf('className="sites-skeleton-shell"');
-  const statusIndex = preview.indexOf('className="sites-skeleton-status"');
-  assert.ok(shellIndex >= 0 && statusIndex > shellIndex);
-  assert.match(css, /position:\s*fixed/);
-  assert.match(css, /inset:\s*0/);
-  assert.match(css, /opacity:\s*0\.52/);
-  assert.match(css, /prefers-reduced-motion:\s*reduce/);
-  assert.doesNotMatch(css, /#020617|canvas|pets|progress/i);
-  assert.doesNotMatch(
-    preview,
-    /loading-spinner|status-mark|status-progress|canvas|cookie|random/i,
+  const manifest = JSON.parse(manifestSource);
+  assert.equal(manifest.name, "Prepped · 내 메뉴 QR");
+  assert.equal(manifest.short_name, "Prepped");
+  assert.equal(manifest.start_url, "/");
+  assert.equal(manifest.scope, "/");
+  assert.deepEqual(
+    manifest.icons.map(({ src, sizes }) => ({ src, sizes })),
+    [
+      { src: "/icon-192.png", sizes: "192x192" },
+      { src: "/icon-512.png", sizes: "512x512" },
+    ],
   );
 
-  assert.match(page, /export const metadata:\s*Metadata/);
-  assert.match(page, /"codex-preview": "development"/);
-  assert.match(page, /<SkeletonPreview \/>/);
-  assert.match(layout, /title:\s*"Starter Project"/);
-  assert.doesNotMatch(layout, /codex-preview|_sites-preview|themeColor|\bViewport\b/);
-  assert.doesNotMatch(css, /(^|\s)(html|body)\s*\{/m);
-
-  await assert.rejects(
-    access(new URL("public/_sites-preview", templateRoot)),
-  );
+  assert.match(mobileSource, /onemeal-menu-v1/);
+  assert.match(mobileSource, /mcdonald=\{\$\{savedIds\.join\(","\)\}\}/);
+  assert.match(mobileSource, /type AppTab = "qr" \| "create" \| "settings"/);
+  assert.match(mobileSource, /<h1>내 설정 메뉴<\/h1>/);
+  assert.match(mobileSource, /맥도날드에 저장한 메뉴/);
+  assert.match(mobileSource, /QR 사용 중/);
+  assert.match(mobileSource, /설정 없음/);
+  assert.match(mobileSource, /aria-current=\{tab === "settings" \? "page" : undefined\}/);
+  assert.match(mobileSource, /function startCreate\(\)[\s\S]*?setStep\("store"\)/);
+  assert.match(mobileSource, /function editSavedStore\(\)[\s\S]*?setSelectedIds\(\[\]\)[\s\S]*?setStep\("category"\)/);
+  assert.equal(mobileSource.match(/onClick=\{editSavedStore\}/g)?.length, 2);
+  assert.match(mobileSource, /function requestTabChange\(nextTab: SavedViewTab\)[\s\S]*?setPendingLeaveTarget\(nextTab\)/);
+  assert.match(mobileSource, /변경한 메뉴를 저장할까요\?/);
+  assert.match(mobileSource, /저장하지 않으면 기존 메뉴가 그대로 유지돼요/);
+  assert.match(mobileSource, /onClick=\{discardDraftAndLeave\} autoFocus/);
+  assert.match(mobileSource, /disabled=\{selectedIds\.length === 0\}/);
+  assert.match(kioskSource, /\(\[a-zA-Z0-9_-\]\+\)=\\\{\(\[\^}]\*\)\\\}/);
+  assert.match(kioskSource, /navigator\.mediaDevices\.getUserMedia/);
+  assert.match(kioskSource, /결제하기/);
 });

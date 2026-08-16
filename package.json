@@ -1,6 +1,7 @@
 {
-  "name": "site-creator-vinext-starter",
+  "name": "prepped",
   "version": "0.1.0",
+  "description": "시니어를 위한 메뉴 조합 QR 생성 PWA와 키오스크 스캐너",
   "private": true,
   "engines": {
     "node": ">=22.13.0"

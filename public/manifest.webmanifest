@@ -1,6 +1,6 @@
 {
-  "name": "한끼패스 · 내 메뉴 QR",
-  "short_name": "한끼패스",
+  "name": "Prepped · 내 메뉴 QR",
+  "short_name": "Prepped",
   "description": "자주 먹는 메뉴를 미리 담고 키오스크에서 QR로 주문하세요.",
   "lang": "ko-KR",
   "start_url": "/",

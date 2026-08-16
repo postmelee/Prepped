@@ -89,7 +89,11 @@ test("returns the persisted result when a concurrent completion wins the same id
       order: CompletedOrder,
       _expiresAt: string,
     ): Promise<void> {
-      this.completion = structuredClone(order);
+      this.completion = {
+        ...structuredClone(order),
+        id: "ord_winner",
+        confirmedAt: "2026-08-16T05:00:01Z",
+      };
       throw new Error("conditional completion write lost the idempotency race");
     }
   }
@@ -108,7 +112,8 @@ test("returns the persisted result when a concurrent completion wins the same id
   const result = await service.completeDraft(draft.token, "b3e1f23a-c83f-4f0f-bbe5-8db3175431a1");
 
   assert.equal(result.idempotentReplay, true);
-  assert.equal(result.order.id, "ord_concurrent");
+  assert.equal(result.order.id, "ord_winner");
+  assert.notEqual(result.order.id, "ord_concurrent");
 });
 
 test("rejects a menu that does not belong to the server catalog", async () => {

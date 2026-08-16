@@ -102,7 +102,7 @@ MVP는 DynamoDB 단일 테이블을 사용합니다. 초안 조회는 토큰 하
 
 ## 관찰성·오류 처리
 
-- 현재 Lambda 실행 로그와 X-Ray 추적은 CloudWatch에서 7일간 보관합니다. 토큰·주문 본문·개인정보는 애플리케이션 로그에 기록하지 않습니다.
+- Lambda CloudWatch 로그는 7일간 보관하고, X-Ray 추적은 AWS 기본 30일 보존 기간을 따릅니다. 토큰·주문 본문·개인정보는 애플리케이션 로그에 기록하지 않습니다.
 - `5xx` 오류, Lambda 오류, API Gateway 4xx/5xx, DynamoDB 처리량·오류를 CloudWatch에서 관찰합니다.
 - 사용자에게는 재시도 가능한 오류인지 알 수 있는 코드와 짧은 한국어 안내를 반환합니다. 예: `NETWORK_RETRY`, `DRAFT_NOT_FOUND`, `VALIDATION_ERROR`.
 - 주문 초안은 조회 실패와 결제 완료 실패를 분리해 표시합니다. 완료 요청이 시간 초과되면 동일 `Idempotency-Key`로 재시도합니다.

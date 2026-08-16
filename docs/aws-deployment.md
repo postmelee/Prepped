@@ -174,7 +174,7 @@ MVP에는 별도 애플리케이션 비밀이 없습니다. 결제·사용자 �
 3. `main` 병합 후 `Deploy Backend to AWS`가 `production` Environment 승인과 OIDC 역할 가정을 기다립니다.
 4. 워크플로가 다시 테스트·SAM 검증을 실행한 뒤 전용 S3 버킷으로 패키징하고 CloudFormation 실행 역할을 통해 `prepped-prod-order-api`를 배포합니다.
 5. 배포 후 `GET /v1/health`, 초안 생성·조회·완료, 멱등 재시도, QR 재사용, CORS를 자동 스모크 테스트합니다. 토큰이나 주문 내용은 로그에 출력하지 않습니다.
-6. HTTP API Stage는 기본 10 RPS·burst 20으로 제한합니다. CloudWatch 오류·지연과 AWS Budgets 알림을 확인합니다.
+6. HTTP API Stage는 10 RPS·burst 20 목표치로 throttling을 설정합니다. CloudWatch 오류·지연과 AWS Budgets 알림을 확인합니다.
 
 SAM으로 GitHub Actions 배포를 구성하는 기본 흐름은 [AWS SAM GitHub Actions 배포 문서](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/deploying-using-github.html)를 참조합니다. 이 프로젝트는 장기 액세스 키 예시 대신 앞 절의 OIDC 자격 증명을 사용합니다.
 

@@ -9,6 +9,7 @@
 ## 발표자료
 
 [시연영상](https://drive.google.com/file/d/1ZoEu1yu1rLZzkZkSqPUHfWB79w7gghv8/view?usp=sharing)
+[발표자료](https://github.com/postmelee/Prepped/blob/devel/%E1%84%92%E1%85%A1%E1%86%AB%E1%84%81%E1%85%B5%E1%84%91%E1%85%A2%E1%84%89%E1%85%B3_10%E1%84%87%E1%85%AE%E1%86%AB_%E1%84%92%E1%85%A2%E1%84%8F%E1%85%A5%E1%84%90%E1%85%A9%E1%86%AB_%E1%84%91%E1%85%B5%E1%84%8E%E1%85%B5_v2.pptx)
 
 ## 심사위원 빠른 체험
 

@@ -10,7 +10,8 @@ GitHub Issue: [#3](https://github.com/postmelee/Prepped/issues/3)
 |---|---|---|---|
 | 1 | 공식 아키텍처·API·배포 문서화 | `docs/backend-architecture.md`, `docs/api-specification.md`, `docs/aws-deployment.md` | 문서 간 계약 일치, QR/배포/IAM 경계 확인 |
 | 2 | AWS 백엔드 스캐폴드 구성 | `backend/` | `backend` 빌드·테스트·SAM 검증 |
-| 3 | AWS 계정/배포 경로 정착 | `backend/`, 배포 설정 문서 갱신 | IAM/OIDC/SAM 배포 흐름 점검 |
+| 3 | CI/CD 배포 경로 구성 | GitHub Actions, 스모크 테스트, 배포 설정 문서 | 워크플로·SAM·스모크 스크립트 정적 검증 |
+| 4 | AWS 계정 실배포 | AWS `dev`/`production` 환경 및 배포 증적 | OIDC 역할 가정, SAM 배포, 원격 스모크 테스트 |
 
 ## 문서 위치 확인
 
@@ -82,31 +83,65 @@ git diff --check
 Task #3 Stage 2: AWS 백엔드 스캐폴드 구현
 ```
 
-## Stage 3 — AWS 계정/배포 경로 정착
+## Stage 3 — CI/CD 배포 경로 구성
 
 ### 산출물
 
-- `backend/` 배포 설정
+- `.github/workflows/backend-ci.yml`
+- `.github/workflows/backend-deploy.yml`
+- `backend/scripts/smoke-test.mjs`
+- `backend/samconfig.toml.example`
 - `docs/aws-deployment.md`
 
 ### 변경 내용
 
-- IAM 사용자/역할, GitHub Actions OIDC, SAM 배포 파라미터를 확정한다.
-- 개발 계정 배포와 롤백 절차를 실제 AWS 환경 기준으로 정리한다.
-- 배포 전후 확인 체크리스트를 운영 문서로 고정한다.
+- `develop/backend`과 `main` PR에서 자동 검증하는 CI를 구성한다.
+- `main` 병합 후 `production` Environment를 통과해야만 OIDC로 배포하는 워크플로를 구성한다.
+- SAM 배포 뒤 health·초안 생성·조회·완료·멱등성·QR 재사용·CORS를 검증하는 스모크 스크립트를 추가한다.
+- GitHub Environment 변수, 전용 아티팩트 버킷, OIDC 역할과 CloudFormation 실행 역할의 분리를 운영 문서에 고정한다.
 
 ### 검증
 
 ```bash
-sam deploy --guided
-aws sts get-caller-identity
+pnpm --dir backend check
+sam validate --template backend/template.yaml --lint
+node --check backend/scripts/smoke-test.mjs
+GitHub Actions YAML 문법 검사
 git diff --check
 ```
 
 ### 커밋
 
 ```text
-Task #3 Stage 3: AWS 배포 경로 정착
+Task #3 Stage 3: GitHub OIDC 배포 경로 구성
+```
+
+## Stage 4 — AWS 계정 실배포
+
+### 외부 사전 조건
+
+- 계정 소유자가 루트 MFA, IAM Identity Center, 예산 경보, OIDC Provider, `production` Environment 변수와 역할을 설정한다.
+- 장기 액세스 키·루트 비밀번호·크레딧 토큰은 저장소나 채팅으로 전달하지 않는다.
+
+### 수행 내용
+
+- IAM Identity Center 임시 자격 증명으로 개발 스택을 먼저 배포하고, ChatGPT Sites Origin에서 API·CORS를 확인한다.
+- `main` 병합 뒤 GitHub `production` Environment 승인으로 OIDC 운영 배포를 실행한다.
+- GitHub Actions 실행 로그, CloudFormation 스택 출력, 자동 스모크 테스트, 비용 알림을 확인한다.
+
+### 검증
+
+```bash
+aws sts get-caller-identity
+sam deploy --guided
+GET /v1/health
+GitHub Actions Deploy Backend to AWS 성공
+```
+
+### 커밋
+
+```text
+Task #3 Stage 4: AWS 실배포 검증
 ```
 
 ## 검증
@@ -124,6 +159,7 @@ Task #3 Stage 3: AWS 배포 경로 정착
 
 - Stage 2는 Stage 1의 공식 문서 확정 후 진행한다.
 - Stage 3은 Stage 2의 코드 골격과 검증이 끝난 뒤 진행한다.
+- Stage 4는 Stage 3의 워크플로가 `main`에 병합되고 계정 소유자가 외부 사전 조건을 완료한 뒤 진행한다.
 
 ## 위험과 대응
 

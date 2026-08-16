@@ -1,0 +1,111 @@
+name: Deploy Backend to AWS
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend-deploy.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: prepped-production-backend
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy production API
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      AWS_DEPLOY_ROLE_ARN: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+      AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
+      CLOUDFORMATION_EXECUTION_ROLE_ARN: ${{ vars.CLOUDFORMATION_EXECUTION_ROLE_ARN }}
+      SAM_ARTIFACT_BUCKET: ${{ vars.SAM_ARTIFACT_BUCKET }}
+      ALLOWED_ORIGINS: ${{ vars.ALLOWED_ORIGINS }}
+      QR_BASE_URL: ${{ vars.QR_BASE_URL }}
+      DRAFT_TTL_DAYS: ${{ vars.DRAFT_TTL_DAYS }}
+      SMOKE_TEST_ORIGIN: ${{ vars.SMOKE_TEST_ORIGIN }}
+      STACK_NAME: prepped-prod-order-api
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Validate deployment configuration
+        shell: bash
+        run: |
+          required=(AWS_REGION AWS_DEPLOY_ROLE_ARN AWS_ACCOUNT_ID CLOUDFORMATION_EXECUTION_ROLE_ARN SAM_ARTIFACT_BUCKET ALLOWED_ORIGINS QR_BASE_URL DRAFT_TTL_DAYS SMOKE_TEST_ORIGIN)
+          for name in "${required[@]}"; do
+            if [[ -z "${!name}" ]]; then
+              echo "GitHub production Environment 변수 $name 이(가) 필요합니다." >&2
+              exit 1
+            fi
+          done
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.19.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: backend/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm --dir backend install --frozen-lockfile
+
+      - name: Run API checks
+        run: pnpm --dir backend check
+
+      - name: Set up AWS SAM CLI
+        uses: aws-actions/setup-sam@v2
+
+      - name: Validate SAM template
+        run: sam validate --template backend/template.yaml --lint
+
+      - name: Configure short-lived AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6.2.3
+        with:
+          role-to-assume: ${{ env.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          allowed-account-ids: ${{ env.AWS_ACCOUNT_ID }}
+          role-session-name: prepped-production-deploy
+
+      - name: Confirm assumed AWS account
+        run: aws sts get-caller-identity
+
+      - name: Build and deploy SAM stack
+        run: |
+          sam build --template-file backend/template.yaml
+          sam deploy \
+            --template-file .aws-sam/build/template.yaml \
+            --stack-name "$STACK_NAME" \
+            --region "$AWS_REGION" \
+            --s3-bucket "$SAM_ARTIFACT_BUCKET" \
+            --s3-prefix "$STACK_NAME/$GITHUB_SHA" \
+            --role-arn "$CLOUDFORMATION_EXECUTION_ROLE_ARN" \
+            --capabilities CAPABILITY_IAM \
+            --parameter-overrides \
+              StageName=prod \
+              AllowedOrigins="$ALLOWED_ORIGINS" \
+              QrBaseUrl="$QR_BASE_URL" \
+              DraftTtlDays="$DRAFT_TTL_DAYS" \
+            --no-confirm-changeset \
+            --no-fail-on-empty-changeset
+
+      - name: Run production smoke test
+        run: |
+          API_BASE_URL="$(aws cloudformation describe-stacks \
+            --stack-name "$STACK_NAME" \
+            --query "Stacks[0].Outputs[?OutputKey=='ApiBaseUrl'].OutputValue" \
+            --output text)"
+          API_BASE_URL="$API_BASE_URL" SMOKE_TEST_ORIGIN="$SMOKE_TEST_ORIGIN" node backend/scripts/smoke-test.mjs

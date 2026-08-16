@@ -285,7 +285,7 @@ p {
   bottom: 0;
   left: 0;
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, 1fr);
   min-height: calc(86px + env(safe-area-inset-bottom));
   padding: 8px 14px max(9px, env(safe-area-inset-bottom));
   border-top: 1px solid rgba(23, 25, 21, 0.09);
@@ -305,6 +305,10 @@ p {
   background: transparent;
   font-size: 13px;
   cursor: pointer;
+}
+
+.bottom-nav button strong {
+  white-space: nowrap;
 }
 
 .bottom-nav button.active {
@@ -342,6 +346,228 @@ p {
   font-size: 31px;
   font-weight: 400;
   line-height: 1;
+}
+
+.settings-icon {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+}
+
+.settings-icon i {
+  position: relative;
+  display: block;
+  width: 23px;
+  height: 2px;
+  border-radius: 2px;
+  background: currentColor;
+}
+
+.settings-icon i::after {
+  position: absolute;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+  background: #fff;
+  content: "";
+  transform: translateY(-50%);
+}
+
+.settings-icon i:nth-child(1)::after,
+.settings-icon i:nth-child(3)::after {
+  left: 3px;
+}
+
+.settings-icon i:nth-child(2)::after {
+  right: 3px;
+}
+
+.settings-header {
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.settings-count {
+  border-radius: 999px;
+  padding: 8px 12px;
+  color: var(--green);
+  background: var(--green-soft);
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.settings-store-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.settings-store-card {
+  overflow: hidden;
+  border: 1px solid rgba(23, 79, 58, 0.18);
+  border-radius: 25px;
+  padding: 18px;
+  background: #fff;
+  box-shadow: 0 14px 34px rgba(41, 37, 26, 0.055);
+}
+
+.settings-store-card.unavailable {
+  border-color: var(--line);
+  box-shadow: none;
+  background: rgba(255, 255, 255, 0.62);
+}
+
+.settings-store-heading {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr) auto;
+  gap: 13px;
+  align-items: center;
+}
+
+.settings-store-name {
+  min-width: 0;
+}
+
+.settings-store-name h2 {
+  overflow: hidden;
+  font-size: 20px;
+  letter-spacing: -0.03em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings-store-name span {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.qr-status,
+.coming-badge {
+  border-radius: 999px;
+  padding: 7px 10px;
+  font-size: 12px;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.qr-status.included {
+  color: var(--green);
+  background: var(--green-soft);
+}
+
+.qr-status.excluded {
+  color: #7b5d33;
+  background: #f4ead6;
+}
+
+.coming-badge {
+  color: #6e726b;
+  background: #edede9;
+}
+
+.settings-menu-list {
+  margin: 18px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.settings-menu-list li {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  gap: 11px;
+  align-items: center;
+  min-height: 61px;
+  border-top: 1px solid #efeee9;
+  padding: 8px 0;
+}
+
+.settings-menu-thumb {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  font-size: 22px;
+}
+
+.settings-menu-list strong {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 15px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings-menu-list li > span:last-child {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.settings-store-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border-top: 1px solid var(--line);
+  margin-top: 8px;
+  padding-top: 16px;
+}
+
+.settings-store-actions > div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.settings-store-actions > div span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.settings-store-actions > div strong {
+  font-size: 20px;
+  letter-spacing: -0.025em;
+}
+
+.settings-store-actions button {
+  min-height: 48px;
+  border: 0;
+  border-radius: 15px;
+  padding: 0 17px;
+  color: white;
+  background: var(--green);
+  font-size: 15px;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.settings-empty {
+  display: flex;
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 5px;
+  border-radius: 16px;
+  margin-top: 17px;
+  padding: 17px;
+  background: #f4f3ee;
+}
+
+.settings-empty.compact {
+  margin-top: 16px;
+}
+
+.settings-empty strong {
+  font-size: 15px;
+}
+
+.settings-empty span {
+  color: var(--muted);
+  font-size: 13px;
 }
 
 .create-header {

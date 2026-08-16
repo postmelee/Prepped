@@ -43,7 +43,7 @@ function getItem(id: number) {
 }
 
 export default function Home() {
-  const [tab, setTab] = useState<"qr" | "create">("qr");
+  const [tab, setTab] = useState<"qr" | "create" | "settings">("qr");
   const [step, setStep] = useState<"store" | "category" | "menu">("store");
   const [category, setCategory] = useState<MenuItem["category"]>("burger");
   const [selectedIds, setSelectedIds] = useState<number[]>(DEFAULT_IDS);
@@ -103,6 +103,7 @@ export default function Home() {
   const selectedItems = selectedIds.map(getItem).filter((item): item is MenuItem => Boolean(item));
   const savedItems = savedIds.map(getItem).filter((item): item is MenuItem => Boolean(item));
   const total = selectedItems.reduce((sum, item) => sum + item.price, 0);
+  const savedTotal = savedItems.reduce((sum, item) => sum + item.price, 0);
   const menuForCategory = MENU_ITEMS.filter((item) => item.category === category);
 
   function startCreate() {
@@ -176,6 +177,75 @@ export default function Home() {
                 </button>
               </div>
             </section>
+          </div>
+        ) : tab === "settings" ? (
+          <div className="screen settings-screen">
+            <header className="screen-header settings-header">
+              <div>
+                <span className="eyebrow">Prepped</span>
+                <h1>내 설정 메뉴</h1>
+              </div>
+              <span className="settings-count" aria-label={`설정된 매장 1개, 메뉴 ${savedItems.length}개`}>
+                1개 매장
+              </span>
+            </header>
+
+            <div className="settings-store-list">
+              <section className="settings-store-card" aria-labelledby="mcdonald-settings-title">
+                <div className="settings-store-heading">
+                  <div className="brand-mark mcdonald-mark" aria-hidden="true">M</div>
+                  <div className="settings-store-name">
+                    <h2 id="mcdonald-settings-title">맥도날드</h2>
+                    <span>{savedItems.length}개 메뉴</span>
+                  </div>
+                  <span className={`qr-status ${storeEnabled ? "included" : "excluded"}`}>
+                    {storeEnabled ? "QR 사용 중" : "QR 제외"}
+                  </span>
+                </div>
+
+                {savedItems.length ? (
+                  <ul className="settings-menu-list" aria-label="맥도날드에 저장한 메뉴">
+                    {savedItems.map((item) => (
+                      <li key={item.id}>
+                        <span className={`settings-menu-thumb ${item.tone}`} aria-hidden="true">{item.icon}</span>
+                        <strong>{item.name}</strong>
+                        <span>{formatPrice(item.price)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <div className="settings-empty">
+                    <strong>설정된 메뉴가 없어요</strong>
+                    <span>자주 먹는 메뉴를 담아주세요</span>
+                  </div>
+                )}
+
+                <div className="settings-store-actions">
+                  <div>
+                    <span>합계</span>
+                    <strong>{formatPrice(savedTotal)}</strong>
+                  </div>
+                  <button type="button" onClick={startCreate}>
+                    {savedItems.length ? "메뉴 바꾸기" : "메뉴 담기"}
+                  </button>
+                </div>
+              </section>
+
+              <section className="settings-store-card unavailable" aria-labelledby="subway-settings-title">
+                <div className="settings-store-heading">
+                  <div className="brand-mark subway-mark" aria-hidden="true">S</div>
+                  <div className="settings-store-name">
+                    <h2 id="subway-settings-title">서브웨이</h2>
+                    <span>설정 없음</span>
+                  </div>
+                  <span className="coming-badge">준비 중</span>
+                </div>
+                <div className="settings-empty compact">
+                  <strong>아직 선택할 수 없어요</strong>
+                  <span>메뉴가 준비되면 알려드릴게요</span>
+                </div>
+              </section>
+            </div>
           </div>
         ) : (
           <div className="screen create-screen">
@@ -272,13 +342,32 @@ export default function Home() {
         )}
 
         <nav className="bottom-nav" aria-label="주요 메뉴">
-          <button className={tab === "qr" ? "active" : ""} type="button" onClick={() => setTab("qr")}>
+          <button
+            className={tab === "qr" ? "active" : ""}
+            type="button"
+            onClick={() => setTab("qr")}
+            aria-current={tab === "qr" ? "page" : undefined}
+          >
             <span className="nav-icon qr-icon"><i /><i /><i /></span>
             <strong>내 QR</strong>
           </button>
-          <button className={tab === "create" ? "active" : ""} type="button" onClick={startCreate}>
+          <button
+            className={tab === "create" ? "active" : ""}
+            type="button"
+            onClick={startCreate}
+            aria-current={tab === "create" ? "page" : undefined}
+          >
             <span className="nav-icon plus-icon">＋</span>
             <strong>메뉴 만들기</strong>
+          </button>
+          <button
+            className={tab === "settings" ? "active" : ""}
+            type="button"
+            onClick={() => setTab("settings")}
+            aria-current={tab === "settings" ? "page" : undefined}
+          >
+            <span className="nav-icon settings-icon"><i /><i /><i /></span>
+            <strong>내 설정</strong>
           </button>
         </nav>
 

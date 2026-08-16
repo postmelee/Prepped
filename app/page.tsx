@@ -12,6 +12,9 @@ type MenuItem = {
   tone: string;
 };
 
+type AppTab = "qr" | "create" | "settings";
+type SavedViewTab = Exclude<AppTab, "create">;
+
 const MENU_ITEMS: MenuItem[] = [
   { id: 101, name: "빅맥", price: 6300, category: "burger", icon: "🍔", tone: "tomato" },
   { id: 102, name: "불고기 버거", price: 3500, category: "burger", icon: "🍔", tone: "amber" },
@@ -43,7 +46,7 @@ function getItem(id: number) {
 }
 
 export default function Home() {
-  const [tab, setTab] = useState<"qr" | "create">("qr");
+  const [tab, setTab] = useState<AppTab>("qr");
   const [step, setStep] = useState<"store" | "category" | "menu">("store");
   const [category, setCategory] = useState<MenuItem["category"]>("burger");
   const [selectedIds, setSelectedIds] = useState<number[]>(DEFAULT_IDS);
@@ -53,7 +56,11 @@ export default function Home() {
   const [cartOpen, setCartOpen] = useState(false);
   const [savedNotice, setSavedNotice] = useState(false);
   const [hydrated, setHydrated] = useState(false);
+  const [editingSavedStore, setEditingSavedStore] = useState(false);
+  const [editOriginTab, setEditOriginTab] = useState<SavedViewTab>("settings");
+  const [pendingLeaveTarget, setPendingLeaveTarget] = useState<SavedViewTab | null>(null);
 
+  /* eslint-disable react-hooks/set-state-in-effect -- Browser storage is only available after the server-rendered page mounts. */
   useEffect(() => {
     try {
       const raw = window.localStorage.getItem(STORAGE_KEY);
@@ -71,6 +78,7 @@ export default function Home() {
       setHydrated(true);
     }
   }, []);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   useEffect(() => {
     if (!hydrated) return;
@@ -103,12 +111,65 @@ export default function Home() {
   const selectedItems = selectedIds.map(getItem).filter((item): item is MenuItem => Boolean(item));
   const savedItems = savedIds.map(getItem).filter((item): item is MenuItem => Boolean(item));
   const total = selectedItems.reduce((sum, item) => sum + item.price, 0);
+  const savedTotal = savedItems.reduce((sum, item) => sum + item.price, 0);
   const menuForCategory = MENU_ITEMS.filter((item) => item.category === category);
 
   function startCreate() {
     setSelectedIds(savedIds);
+    setEditingSavedStore(false);
     setStep("store");
     setTab("create");
+  }
+
+  function editSavedStore() {
+    setSelectedIds([]);
+    setEditOriginTab(tab === "qr" ? "qr" : "settings");
+    setEditingSavedStore(true);
+    setStep("category");
+    setTab("create");
+  }
+
+  function requestTabChange(nextTab: SavedViewTab) {
+    if (tab === nextTab) return;
+    if (tab === "create" && editingSavedStore) {
+      setPendingLeaveTarget(nextTab);
+      return;
+    }
+    setTab(nextTab);
+  }
+
+  function handleCreateBack() {
+    if (step === "menu") {
+      setStep("category");
+      return;
+    }
+    if (editingSavedStore) {
+      setPendingLeaveTarget(editOriginTab);
+      return;
+    }
+    setStep("store");
+  }
+
+  function discardDraftAndLeave() {
+    const nextTab = pendingLeaveTarget ?? editOriginTab;
+    setSelectedIds(savedIds);
+    setEditingSavedStore(false);
+    setPendingLeaveTarget(null);
+    setStep("store");
+    setTab(nextTab);
+  }
+
+  function saveDraftAndLeave() {
+    if (!selectedIds.length) return;
+    const nextTab = pendingLeaveTarget ?? editOriginTab;
+    setSavedIds(selectedIds);
+    setStoreEnabled(true);
+    setEditingSavedStore(false);
+    setPendingLeaveTarget(null);
+    setStep("store");
+    setTab(nextTab);
+    setSavedNotice(true);
+    window.setTimeout(() => setSavedNotice(false), 2600);
   }
 
   function toggleMenu(id: number) {
@@ -120,6 +181,8 @@ export default function Home() {
   function saveMenu() {
     setSavedIds(selectedIds);
     setStoreEnabled(true);
+    setEditingSavedStore(false);
+    setPendingLeaveTarget(null);
     setCartOpen(false);
     setSavedNotice(true);
     setTab("qr");
@@ -138,7 +201,12 @@ export default function Home() {
 
             <div className="qr-card">
               <div className="qr-frame" aria-label={`QR 데이터: ${qrPayload}`}>
-                {qrUrl ? <img src={qrUrl} alt="내 메뉴가 저장된 QR 코드" /> : <div className="qr-loading" />}
+                {qrUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- The QR encoder returns a runtime data URL.
+                  <img src={qrUrl} alt="내 메뉴가 저장된 QR 코드" />
+                ) : (
+                  <div className="qr-loading" />
+                )}
                 <span className="qr-corner corner-one" />
                 <span className="qr-corner corner-two" />
                 <span className="qr-corner corner-three" />
@@ -151,7 +219,7 @@ export default function Home() {
             <section className="qr-info" aria-labelledby="qr-info-title">
               <div className="section-title-row">
                 <h2 id="qr-info-title">QR 정보</h2>
-                <button className="text-button" type="button" onClick={startCreate}>메뉴 바꾸기</button>
+                <button className="text-button" type="button" onClick={editSavedStore}>메뉴 바꾸기</button>
               </div>
               <div className={`store-toggle ${storeEnabled ? "enabled" : ""}`}>
                 <div className="brand-mark mcdonald-mark" aria-hidden="true">M</div>
@@ -177,6 +245,75 @@ export default function Home() {
               </div>
             </section>
           </div>
+        ) : tab === "settings" ? (
+          <div className="screen settings-screen">
+            <header className="screen-header settings-header">
+              <div>
+                <span className="eyebrow">Prepped</span>
+                <h1>내 설정 메뉴</h1>
+              </div>
+              <span className="settings-count" aria-label={`설정된 매장 1개, 메뉴 ${savedItems.length}개`}>
+                1개 매장
+              </span>
+            </header>
+
+            <div className="settings-store-list">
+              <section className="settings-store-card" aria-labelledby="mcdonald-settings-title">
+                <div className="settings-store-heading">
+                  <div className="brand-mark mcdonald-mark" aria-hidden="true">M</div>
+                  <div className="settings-store-name">
+                    <h2 id="mcdonald-settings-title">맥도날드</h2>
+                    <span>{savedItems.length}개 메뉴</span>
+                  </div>
+                  <span className={`qr-status ${storeEnabled ? "included" : "excluded"}`}>
+                    {storeEnabled ? "QR 사용 중" : "QR 제외"}
+                  </span>
+                </div>
+
+                {savedItems.length ? (
+                  <ul className="settings-menu-list" aria-label="맥도날드에 저장한 메뉴">
+                    {savedItems.map((item) => (
+                      <li key={item.id}>
+                        <span className={`settings-menu-thumb ${item.tone}`} aria-hidden="true">{item.icon}</span>
+                        <strong>{item.name}</strong>
+                        <span>{formatPrice(item.price)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <div className="settings-empty">
+                    <strong>설정된 메뉴가 없어요</strong>
+                    <span>자주 먹는 메뉴를 담아주세요</span>
+                  </div>
+                )}
+
+                <div className="settings-store-actions">
+                  <div>
+                    <span>합계</span>
+                    <strong>{formatPrice(savedTotal)}</strong>
+                  </div>
+                  <button type="button" onClick={editSavedStore}>
+                    {savedItems.length ? "메뉴 바꾸기" : "메뉴 담기"}
+                  </button>
+                </div>
+              </section>
+
+              <section className="settings-store-card unavailable" aria-labelledby="subway-settings-title">
+                <div className="settings-store-heading">
+                  <div className="brand-mark subway-mark" aria-hidden="true">S</div>
+                  <div className="settings-store-name">
+                    <h2 id="subway-settings-title">서브웨이</h2>
+                    <span>설정 없음</span>
+                  </div>
+                  <span className="coming-badge">준비 중</span>
+                </div>
+                <div className="settings-empty compact">
+                  <strong>아직 선택할 수 없어요</strong>
+                  <span>메뉴가 준비되면 알려드릴게요</span>
+                </div>
+              </section>
+            </div>
+          </div>
         ) : (
           <div className="screen create-screen">
             <header className="create-header">
@@ -193,7 +330,7 @@ export default function Home() {
                   className="back-button"
                   type="button"
                   aria-label="이전 단계"
-                  onClick={() => setStep(step === "menu" ? "category" : "store")}
+                  onClick={handleCreateBack}
                 >
                   ‹
                 </button>
@@ -272,19 +409,46 @@ export default function Home() {
         )}
 
         <nav className="bottom-nav" aria-label="주요 메뉴">
-          <button className={tab === "qr" ? "active" : ""} type="button" onClick={() => setTab("qr")}>
+          <button
+            className={tab === "qr" ? "active" : ""}
+            type="button"
+            onClick={() => requestTabChange("qr")}
+            aria-current={tab === "qr" ? "page" : undefined}
+          >
             <span className="nav-icon qr-icon"><i /><i /><i /></span>
             <strong>내 QR</strong>
           </button>
-          <button className={tab === "create" ? "active" : ""} type="button" onClick={startCreate}>
+          <button
+            className={tab === "create" ? "active" : ""}
+            type="button"
+            onClick={() => {
+              if (tab !== "create") startCreate();
+            }}
+            aria-current={tab === "create" ? "page" : undefined}
+          >
             <span className="nav-icon plus-icon">＋</span>
             <strong>메뉴 만들기</strong>
+          </button>
+          <button
+            className={tab === "settings" ? "active" : ""}
+            type="button"
+            onClick={() => requestTabChange("settings")}
+            aria-current={tab === "settings" ? "page" : undefined}
+          >
+            <span className="nav-icon settings-icon"><i /><i /><i /></span>
+            <strong>내 설정</strong>
           </button>
         </nav>
 
         {cartOpen && (
-          <div className="sheet-backdrop" role="presentation" onMouseDown={() => setCartOpen(false)}>
-            <section className="bottom-sheet" role="dialog" aria-modal="true" aria-labelledby="selected-title" onMouseDown={(event) => event.stopPropagation()}>
+          <div className="sheet-backdrop">
+            <button
+              className="sheet-backdrop-dismiss"
+              type="button"
+              aria-label="선택한 메뉴 닫기"
+              onClick={() => setCartOpen(false)}
+            />
+            <section className="bottom-sheet" role="dialog" aria-modal="true" aria-labelledby="selected-title">
               <div className="sheet-handle" />
               <div className="sheet-heading">
                 <div><span className="eyebrow">맥도날드</span><h2 id="selected-title">선택한 메뉴</h2></div>
@@ -301,6 +465,35 @@ export default function Home() {
               </div>
               <div className="sheet-total"><span>합계</span><strong>{formatPrice(total)}</strong></div>
               <button className="primary-button" type="button" onClick={saveMenu}>이 메뉴로 저장하기</button>
+            </section>
+          </div>
+        )}
+
+        {pendingLeaveTarget && (
+          <div className="leave-dialog-backdrop">
+            <section
+              className="leave-dialog"
+              role="alertdialog"
+              aria-modal="true"
+              aria-labelledby="leave-dialog-title"
+              aria-describedby="leave-dialog-description"
+            >
+              <span className="eyebrow">메뉴 변경 중</span>
+              <h2 id="leave-dialog-title">변경한 메뉴를 저장할까요?</h2>
+              <p id="leave-dialog-description">저장하지 않으면 기존 메뉴가 그대로 유지돼요.</p>
+              <div className="leave-dialog-actions">
+                <button className="discard-draft-button" type="button" onClick={discardDraftAndLeave} autoFocus>
+                  저장하지 않음
+                </button>
+                <button
+                  className="save-draft-button"
+                  type="button"
+                  onClick={saveDraftAndLeave}
+                  disabled={selectedIds.length === 0}
+                >
+                  저장하기
+                </button>
+              </div>
             </section>
           </div>
         )}

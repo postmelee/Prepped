@@ -74,15 +74,20 @@ test("keeps the PWA and QR contracts explicit", async () => {
 
   assert.match(mobileSource, /onemeal-menu-v1/);
   assert.match(mobileSource, /mcdonald=\{\$\{savedIds\.join\(","\)\}\}/);
-  assert.match(mobileSource, /"qr" \| "create" \| "settings"/);
+  assert.match(mobileSource, /type AppTab = "qr" \| "create" \| "settings"/);
   assert.match(mobileSource, /<h1>내 설정 메뉴<\/h1>/);
   assert.match(mobileSource, /맥도날드에 저장한 메뉴/);
   assert.match(mobileSource, /QR 사용 중/);
   assert.match(mobileSource, /설정 없음/);
   assert.match(mobileSource, /aria-current=\{tab === "settings" \? "page" : undefined\}/);
   assert.match(mobileSource, /function startCreate\(\)[\s\S]*?setStep\("store"\)/);
-  assert.match(mobileSource, /function editSavedStore\(\)[\s\S]*?setStep\("category"\)/);
+  assert.match(mobileSource, /function editSavedStore\(\)[\s\S]*?setSelectedIds\(\[\]\)[\s\S]*?setStep\("category"\)/);
   assert.equal(mobileSource.match(/onClick=\{editSavedStore\}/g)?.length, 2);
+  assert.match(mobileSource, /function requestTabChange\(nextTab: SavedViewTab\)[\s\S]*?setPendingLeaveTarget\(nextTab\)/);
+  assert.match(mobileSource, /변경한 메뉴를 저장할까요\?/);
+  assert.match(mobileSource, /저장하지 않으면 기존 메뉴가 그대로 유지돼요/);
+  assert.match(mobileSource, /onClick=\{discardDraftAndLeave\} autoFocus/);
+  assert.match(mobileSource, /disabled=\{selectedIds\.length === 0\}/);
   assert.match(kioskSource, /\(\[a-zA-Z0-9_-\]\+\)=\\\{\(\[\^}]\*\)\\\}/);
   assert.match(kioskSource, /navigator\.mediaDevices\.getUserMedia/);
   assert.match(kioskSource, /결제하기/);

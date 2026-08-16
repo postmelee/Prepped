@@ -12,6 +12,9 @@ type MenuItem = {
   tone: string;
 };
 
+type AppTab = "qr" | "create" | "settings";
+type SavedViewTab = Exclude<AppTab, "create">;
+
 const MENU_ITEMS: MenuItem[] = [
   { id: 101, name: "빅맥", price: 6300, category: "burger", icon: "🍔", tone: "tomato" },
   { id: 102, name: "불고기 버거", price: 3500, category: "burger", icon: "🍔", tone: "amber" },
@@ -43,7 +46,7 @@ function getItem(id: number) {
 }
 
 export default function Home() {
-  const [tab, setTab] = useState<"qr" | "create" | "settings">("qr");
+  const [tab, setTab] = useState<AppTab>("qr");
   const [step, setStep] = useState<"store" | "category" | "menu">("store");
   const [category, setCategory] = useState<MenuItem["category"]>("burger");
   const [selectedIds, setSelectedIds] = useState<number[]>(DEFAULT_IDS);
@@ -53,7 +56,11 @@ export default function Home() {
   const [cartOpen, setCartOpen] = useState(false);
   const [savedNotice, setSavedNotice] = useState(false);
   const [hydrated, setHydrated] = useState(false);
+  const [editingSavedStore, setEditingSavedStore] = useState(false);
+  const [editOriginTab, setEditOriginTab] = useState<SavedViewTab>("settings");
+  const [pendingLeaveTarget, setPendingLeaveTarget] = useState<SavedViewTab | null>(null);
 
+  /* eslint-disable react-hooks/set-state-in-effect -- Browser storage is only available after the server-rendered page mounts. */
   useEffect(() => {
     try {
       const raw = window.localStorage.getItem(STORAGE_KEY);
@@ -71,6 +78,7 @@ export default function Home() {
       setHydrated(true);
     }
   }, []);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   useEffect(() => {
     if (!hydrated) return;
@@ -108,14 +116,60 @@ export default function Home() {
 
   function startCreate() {
     setSelectedIds(savedIds);
+    setEditingSavedStore(false);
     setStep("store");
     setTab("create");
   }
 
   function editSavedStore() {
-    setSelectedIds(savedIds);
+    setSelectedIds([]);
+    setEditOriginTab(tab === "qr" ? "qr" : "settings");
+    setEditingSavedStore(true);
     setStep("category");
     setTab("create");
+  }
+
+  function requestTabChange(nextTab: SavedViewTab) {
+    if (tab === nextTab) return;
+    if (tab === "create" && editingSavedStore) {
+      setPendingLeaveTarget(nextTab);
+      return;
+    }
+    setTab(nextTab);
+  }
+
+  function handleCreateBack() {
+    if (step === "menu") {
+      setStep("category");
+      return;
+    }
+    if (editingSavedStore) {
+      setPendingLeaveTarget(editOriginTab);
+      return;
+    }
+    setStep("store");
+  }
+
+  function discardDraftAndLeave() {
+    const nextTab = pendingLeaveTarget ?? editOriginTab;
+    setSelectedIds(savedIds);
+    setEditingSavedStore(false);
+    setPendingLeaveTarget(null);
+    setStep("store");
+    setTab(nextTab);
+  }
+
+  function saveDraftAndLeave() {
+    if (!selectedIds.length) return;
+    const nextTab = pendingLeaveTarget ?? editOriginTab;
+    setSavedIds(selectedIds);
+    setStoreEnabled(true);
+    setEditingSavedStore(false);
+    setPendingLeaveTarget(null);
+    setStep("store");
+    setTab(nextTab);
+    setSavedNotice(true);
+    window.setTimeout(() => setSavedNotice(false), 2600);
   }
 
   function toggleMenu(id: number) {
@@ -127,6 +181,8 @@ export default function Home() {
   function saveMenu() {
     setSavedIds(selectedIds);
     setStoreEnabled(true);
+    setEditingSavedStore(false);
+    setPendingLeaveTarget(null);
     setCartOpen(false);
     setSavedNotice(true);
     setTab("qr");
@@ -145,7 +201,12 @@ export default function Home() {
 
             <div className="qr-card">
               <div className="qr-frame" aria-label={`QR 데이터: ${qrPayload}`}>
-                {qrUrl ? <img src={qrUrl} alt="내 메뉴가 저장된 QR 코드" /> : <div className="qr-loading" />}
+                {qrUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- The QR encoder returns a runtime data URL.
+                  <img src={qrUrl} alt="내 메뉴가 저장된 QR 코드" />
+                ) : (
+                  <div className="qr-loading" />
+                )}
                 <span className="qr-corner corner-one" />
                 <span className="qr-corner corner-two" />
                 <span className="qr-corner corner-three" />
@@ -269,7 +330,7 @@ export default function Home() {
                   className="back-button"
                   type="button"
                   aria-label="이전 단계"
-                  onClick={() => setStep(step === "menu" ? "category" : "store")}
+                  onClick={handleCreateBack}
                 >
                   ‹
                 </button>
@@ -351,7 +412,7 @@ export default function Home() {
           <button
             className={tab === "qr" ? "active" : ""}
             type="button"
-            onClick={() => setTab("qr")}
+            onClick={() => requestTabChange("qr")}
             aria-current={tab === "qr" ? "page" : undefined}
           >
             <span className="nav-icon qr-icon"><i /><i /><i /></span>
@@ -360,7 +421,9 @@ export default function Home() {
           <button
             className={tab === "create" ? "active" : ""}
             type="button"
-            onClick={startCreate}
+            onClick={() => {
+              if (tab !== "create") startCreate();
+            }}
             aria-current={tab === "create" ? "page" : undefined}
           >
             <span className="nav-icon plus-icon">＋</span>
@@ -369,7 +432,7 @@ export default function Home() {
           <button
             className={tab === "settings" ? "active" : ""}
             type="button"
-            onClick={() => setTab("settings")}
+            onClick={() => requestTabChange("settings")}
             aria-current={tab === "settings" ? "page" : undefined}
           >
             <span className="nav-icon settings-icon"><i /><i /><i /></span>
@@ -378,8 +441,14 @@ export default function Home() {
         </nav>
 
         {cartOpen && (
-          <div className="sheet-backdrop" role="presentation" onMouseDown={() => setCartOpen(false)}>
-            <section className="bottom-sheet" role="dialog" aria-modal="true" aria-labelledby="selected-title" onMouseDown={(event) => event.stopPropagation()}>
+          <div className="sheet-backdrop">
+            <button
+              className="sheet-backdrop-dismiss"
+              type="button"
+              aria-label="선택한 메뉴 닫기"
+              onClick={() => setCartOpen(false)}
+            />
+            <section className="bottom-sheet" role="dialog" aria-modal="true" aria-labelledby="selected-title">
               <div className="sheet-handle" />
               <div className="sheet-heading">
                 <div><span className="eyebrow">맥도날드</span><h2 id="selected-title">선택한 메뉴</h2></div>
@@ -396,6 +465,35 @@ export default function Home() {
               </div>
               <div className="sheet-total"><span>합계</span><strong>{formatPrice(total)}</strong></div>
               <button className="primary-button" type="button" onClick={saveMenu}>이 메뉴로 저장하기</button>
+            </section>
+          </div>
+        )}
+
+        {pendingLeaveTarget && (
+          <div className="leave-dialog-backdrop">
+            <section
+              className="leave-dialog"
+              role="alertdialog"
+              aria-modal="true"
+              aria-labelledby="leave-dialog-title"
+              aria-describedby="leave-dialog-description"
+            >
+              <span className="eyebrow">메뉴 변경 중</span>
+              <h2 id="leave-dialog-title">변경한 메뉴를 저장할까요?</h2>
+              <p id="leave-dialog-description">저장하지 않으면 기존 메뉴가 그대로 유지돼요.</p>
+              <div className="leave-dialog-actions">
+                <button className="discard-draft-button" type="button" onClick={discardDraftAndLeave} autoFocus>
+                  저장하지 않음
+                </button>
+                <button
+                  className="save-draft-button"
+                  type="button"
+                  onClick={saveDraftAndLeave}
+                  disabled={selectedIds.length === 0}
+                >
+                  저장하기
+                </button>
+              </div>
             </section>
           </div>
         )}

@@ -11,6 +11,7 @@ GitHub Issue: [#16](https://github.com/postmelee/Prepped/issues/16)
 | 1 | viewport 고정 레이어 회귀 수정 | `app/globals.css`, `tests/rendered-html.test.mjs` | CSS 계약 테스트, build, diff 검사 |
 | 2 | QR 카드 액션 단순화 | `app/page.tsx`, `app/globals.css`, `tests/rendered-html.test.mjs` | 모바일 테스트, lint, build, diff 검사 |
 | 3 | 통합 브라우저 검증과 PR 준비 | 브라우저 검증 기록, 전체 회귀 결과 | 긴 목록·세 탭·QR 카드, 전체 test/lint/build |
+| 4 | 공유 성공 피드백과 버튼 모션 | `app/page.tsx`, `app/globals.css`, `tests/rendered-html.test.mjs` | 성공·실패 상태, reduced motion, 브라우저 상호작용 |
 
 ## 문서 위치 확인
 
@@ -116,6 +117,47 @@ git status --short
 Task #16 Stage 3: 하단 고정 UI 통합 검증 완료
 ```
 
+## Stage 4 — 공유 성공 피드백과 버튼 모션
+
+### 산출물
+
+- `app/page.tsx`
+- `app/globals.css`
+- `tests/rendered-html.test.mjs`
+- `mydocs/feedback/task_m010_16_feedback.md`
+
+### 변경 내용
+
+- 전체 QR과 매장별 공유 버튼을 누르면 복사 시작과 함께 해당 버튼에 360ms 이내의 눌림·복귀 모션을 적용한다.
+- 복사 성공 시 viewport 중앙의 비차단 확인 모달에 정확히 `공유 링크가 복사되었습니다.`를 표시하고 약 2.3초 뒤 자동으로 닫는다.
+- 확인 모달은 상태 아이콘·컨테이너·은은한 glow의 세 레이어를 사용하되 모바일 PWA에 맞게 transform·opacity 중심으로 제한한다.
+- 복사 실패는 기존 실패 문구와 `role="alert"`를 유지하고 성공은 `role="status"`, `aria-atomic="true"`로 보조기기에 알린다.
+- 연속 클릭 시 이전 타이머가 새 알림을 조기에 지우지 않도록 timer ref를 정리하고, 같은 버튼 재클릭도 animation key가 갱신되게 한다.
+- `prefers-reduced-motion: reduce`에서는 버튼의 spatial transform과 confirmation pop을 제거하고 즉시 상태만 표시한다.
+
+### 검증
+
+```bash
+node --test tests/rendered-html.test.mjs
+npm run test:mobile
+npm run lint
+npm run build
+git diff --check
+```
+
+브라우저에서 전체·매장별 공유 버튼 클릭 후 다음을 확인한다.
+
+- Clipboard URL이 기존 payload 계약을 유지한다.
+- 버튼 feedback class가 즉시 적용되고 약 420ms 안에 해제된다.
+- 성공 확인 모달의 정확한 문구, `role="status"`, viewport 중앙 배치와 자동 닫힘을 확인한다.
+- 복사 실패 시 `role="alert"`와 실패 문구가 표시되는지 확인한다.
+
+### 커밋
+
+```text
+Task #16 Stage 4: 공유 성공 모달과 버튼 피드백 추가
+```
+
 ## 검증
 
 - 각 Stage 검증 명령은 단계 보고서 작성 전에 실행한다.
@@ -132,6 +174,7 @@ Task #16 Stage 3: 하단 고정 UI 통합 검증 완료
 
 - Stage 2는 Stage 1의 viewport 고정 레이어와 데스크톱 셸 경계가 확정된 뒤 진행한다.
 - Stage 3은 Stage 2의 QR 카드 액션과 자동 검증이 완료된 뒤 진행한다.
+- Stage 4는 PR #18 게시 후 작업지시자 피드백을 반영하며, Stage 3의 fixed 셸 경계와 공유 버튼 배치를 그대로 사용한다.
 
 ## 위험과 대응
 
@@ -139,8 +182,11 @@ Task #16 Stage 3: 하단 고정 UI 통합 검증 완료
 - **시트 animation과 중앙 transform 충돌**: 중앙 transform은 backdrop에만, 등장 animation transform은 bottom sheet에만 둔다.
 - **스크롤 체인과 safe-area**: `overscroll-behavior`와 기존 safe-area padding을 유지해 문서 이동 및 홈 인디케이터 가림을 줄인다.
 - **QR 저장 계약 회귀**: QR 화면 markup만 단순화하고 설정 모델과 `StoreSettings`를 유지하며 `test:mobile`로 직렬화를 확인한다.
+- **연속 클릭 타이머 경합**: timeout ref를 취소·교체하고 unmount cleanup을 제공해 최신 알림의 표시 시간을 보장한다.
+- **모션 접근성**: confirmation과 버튼 transform은 reduced-motion media query에서 제거하고 텍스트·ARIA 상태를 독립적으로 유지한다.
 
 ## 승인 요청 사항
 
 - 작업지시자는 같은 스레드에서 Stage 분할, 구현, 단계 검증, 최종 보고와 `devel` 대상 Open PR 생성까지 계속 진행하도록 명시적으로 승인했다.
+- PR #18 게시 후 작업지시자는 공유 성공 확인 모달과 버튼의 일시적 클릭 animation을 추가하도록 명시적으로 요청했다.
 - 승인에 따라 각 Stage의 보고서와 커밋을 남긴 뒤 별도 대기 없이 다음 단계로 진행한다.
